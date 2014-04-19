@@ -1,0 +1,16 @@
+rm RK4
+make
+FACTOR=160
+NR=640
+NT=640
+DZ=100
+DISTANCE=100	#Centimeters  (Propagation Distance)
+EIN=35		#MiliJoules   (Input Energy)
+TAUP=55 	#Femtoseconds (Temporal Beam Waist)
+W0=10		#MiliMeters   (Spatial Beam Waist)
+LCR=60		#CentiMeters  (LensCurvatureRadius)
+for VARIABLE in 16 32 64 128 256
+do
+	let "NR = $FACTOR * $VARIABLE"
+	./assn3 
+done

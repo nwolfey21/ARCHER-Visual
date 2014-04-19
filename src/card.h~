@@ -1,0 +1,49 @@
+//
+//  card.h
+//  HIgh Jump Laptop
+//
+//  Created by Noah Wolfe on 10/25/12.
+//  Copyright (c) 2012 Noah Wolfe. All rights reserved.
+//
+
+#ifndef __HIgh_Jump_Laptop__card__
+#define __HIgh_Jump_Laptop__card__
+
+#include <iostream>
+#include <stdlib.h>
+#include <stdio.h>
+#include <cublas.h>
+
+class card
+{
+private:
+public:
+	//Temp Variables used in begining of program to load data to device
+	cuDoubleComplex *foldtemp;
+	cuDoubleComplex *rhotemp;
+	cuDoubleComplex *ddrtemp;
+    	//Variables
+	cuDoubleComplex *dd;
+	cuDoubleComplex *ddevt2;
+	cuDoubleComplex *dfold;
+	cuDoubleComplex *df;
+	cuDoubleComplex *dk1;
+	cuDoubleComplex *dk2;
+	cuDoubleComplex *dk3;
+	cuDoubleComplex *dk4;
+	cuDoubleComplex *drho;
+	cuDoubleComplex *ddr;
+	cuDoubleComplex  nex;
+	cuDoubleComplex  prev;
+	double *dabs;
+	int mx;
+    	//Functions
+/*    	void initialize(int nt);
+    	void setVectors(float px, float py, float pz, float vx, float vy, float vz, float ax, float ay, float az);
+    	void calcVertVeloc();
+    	void setParameters(float constantVelocity, float LeapMax, float Angle);
+    	void getParameters();
+*/    	//    float getCurVel(int k);
+};
+
+#endif /* defined(__HIgh_Jump_Laptop__card__) */

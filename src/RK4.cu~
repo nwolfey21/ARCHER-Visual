@@ -1,0 +1,1719 @@
+/*******************************************************************
+
+Air Force Research Labs Advanced Electric Lasers Branch
+
+********************************************************************
+
+Discription:
+  NLSE 3+1 propagation using RK4, 2SHOC and Cuda P2P Data Accessing 
+  for recreating Autobahn's filament experiments in the lab.
+
+Version: 1.0
+
+Currently: 12/12/12
+  Successfull implementation that works for all terms active and
+  uses the focussing lens. 
+  Prints out all relevant information.
+
+*******************************************************************/
+
+//Includes, System
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+#include <complex.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+//CUDA
+#include <cublas.h>
+#include <cufft.h>
+#include <cutil.h>
+#include <cutil_inline.h>
+#include <cuComplex.h>
+//OpenMP
+#include <omp.h>
+// includes, kernels
+#include "RK4_kernel.cu"
+#include "init.h"
+#include "queue.h"
+#include "card.h"
+/* OpenGL Code Headers */
+#include <GL/glui.h>
+
+//---File Variables---//
+int fileCount = 1;
+char precursor[10];
+char directory[75];
+char prevdirectory[75];	
+char directorySpatVids[75];
+char directoryPlasVids[75];
+char pathBeamWaist[75];
+char pathInitR[75];
+char pathInitT[75];
+char pathtempR[75];
+char pathtempT[75];
+char pathSpatialRealOut[75];	
+char pathSpatialImagOut[75];
+char pathPlasRealOut[75];	
+char pathPlasImagOut[75];
+char pathSpatVidReal[100];	
+char pathSpatVidImag[100];
+char pathPlasVidReal[100];	
+char pathPlasVidImag[100];	
+char pathPlasSim[100];
+char pathMax[100];
+FILE *BeamWaist;
+FILE *intpulse;
+FILE *inxpulse;
+FILE *inttemp;
+FILE *inxtemp;
+FILE *spatialRealOut;
+FILE *spatialImagOut;
+FILE *plasRealOut;
+FILE *plasImagOut;
+FILE *spatVidReal;
+FILE *spatVidImag;
+FILE *plasVidReal;
+FILE *plasSim;
+FILE *maxValues;
+//---Various Variables---//
+unsigned int step_num, step_num_1, step_num_2, i, j, k, n, nr, nt, mp, found, frameRate, zRate, ntot, mem_size;
+unsigned int fflag, iflag, mflag, aflag, gflag, csflag, wflag, lflag, vflag, pflag, intflag, spaceflag, plasflag, plasSimflag, maxflag;
+double Ein, Pin, I0;
+double distance, distance_1, distance_2, xmax, ymax, rmax, tmax, dz, dz_1, dz_2, dr, dt, w0, pcr, over_pcr;
+double c0, n0, lambda0, omega0, pi, beta2, n2, E0, sigma, tauc, taup, HM, maxx, instW0;
+double eg, hbar, consp2, k0, nb, beta7, a, consp1, fc, consp3, *hmax;
+double lensCurvatureRadius;
+float device_memory_amount, chirp, MBs_den;
+cuDoubleComplex ifacr, ifacn, omegatau, mc1;
+cuDoubleComplex hcoe1, hcoe2, homeg, hjustI, htwo, hc1, hc2, hc3, hc4; 
+cuDoubleComplex hfour, htwel, hzero, hcx1, hcsig, hone, hc11, dtoc, con5, h2dr;
+cuDoubleComplex s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, cons1;
+//---Multi Card Parameters
+card *devices;
+int commSize;
+int datapernode;
+unsigned int sizedatapernode;
+int gpuid[64]; // we want to find the first two GPU's that can support P2P
+//OpenMP Variables
+int nthreads, tid;
+int tstart;
+int tend;
+int prev,nex;
+//---Cuda Device Variables---//
+double *r, *t, *omegat;
+double complex *uh;
+double *dmax, *dabs;
+cuDoubleComplex *f, *fold, *k1, *k2, *k3, *k4, *devt2, *d, *rho, *hr;
+cuDoubleComplex *dd, *ddevt2, *dfold, *df;
+cuDoubleComplex *dk1, *dk2, *dk3, *dk4;
+cuDoubleComplex *drho;
+cuDoubleComplex *ddr;
+cuDoubleComplex ddz, two1;
+//cuDoubleComplex coe1, coe2, omeg, justI, two, c1, c2, c3, c4, four, twel, zero, cx1, csig, one, c11, cc11, dE0, dcon5, hdt, d2dr;
+cuDoubleComplex hdt, one, cc11;
+//double dconsp1, dconsp2, dconsp3;	
+//int dmp;
+//---timing Variables---//
+double elapsed_gpu;
+//clock_t start, end;
+//float time;
+float cstart;
+uint tempTime;
+uint kernelTime;
+//---ColorTable Variable---//
+float rt[206], g[206], b[206];
+//---opengl variables start ---//
+cuDoubleComplex *fTemporal2D;
+cuDoubleComplex *fSpatial3D;
+cuDoubleComplex *fSpectral;
+//---SpaceTime Variables---//
+struct queue queSpaceTime;
+struct node nod1Space;
+struct node nod2Space;
+//--- Multipliers---//
+int spatialmultiplier = 1;
+int spectralmultiplier = 1;
+int specmult = 1.99;
+
+//Prototypes
+void runSim(int crap);
+
+////////////////////////////////////////////////////////////////////////////////
+// These are CUDA Helper functions
+// This will output the proper CUDA error strings in the event that a CUDA host 
+// call returns an error
+////////////////////////////////////////////////////////////////////////////////
+#define checkCudaErrors(err)           __checkCudaErrors (err, __FILE__, __LINE__)
+
+inline void __checkCudaErrors( cudaError err, const char *file, const int line )
+{
+    if( cudaSuccess != err) {
+        fprintf(stderr, "%s(%i) : CUDA Runtime API error %d: %s.\n",
+                file, line, (int)err, cudaGetErrorString( err ) );
+        exit(-1);
+    }
+}
+
+// This will output the proper error string when calling cudaGetLastError
+#define getLastCudaError(msg)      __getLastCudaError (msg, __FILE__, __LINE__)
+
+inline void __getLastCudaError( const char *errorMessage, const char *file, const int line )
+{
+    cudaError_t err = cudaGetLastError();
+    if( cudaSuccess != err) {
+        fprintf(stderr, "%s(%i) : getLastCudaError() CUDA error : %s : (%d) %s.\n",
+                file, line, errorMessage, (int)err, cudaGetErrorString( err ) );
+        exit(-1);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Setting up colortable
+////////////////////////////////////////////////////////////////////////////////
+void colortable( void )
+{
+	float cr = 0;
+	float cg = -5;
+	float cb = 255;
+	// Red //
+	for(i = 0; i<= 103; i++)
+	{
+		rt[i] = 0;
+	} 
+	for(i = 104; i<= 154; i++)
+	{
+		cr = cr + 5;
+		rt[i] = cr / 255;
+	} 
+	for(i = 155; i<= 205; i++)
+	{
+		rt[i] = 1;
+	} 
+	// Green //
+	for(i = 0; i<= 51; i++)
+	{
+		cg = cg + 5;
+		g[i] = cg / 255;
+	} 
+	for(i = 52; i<= 154; i++)
+	{
+		g[i] = 1;
+	}  
+	for(i = 155; i<= 205; i++)
+	{
+		cg = cg - 5;
+		g[i] = cg / 255;
+	} 
+	// Blue //
+	for(i = 0; i<= 52; i++)
+	{
+		b[i] = 1;
+	} 
+	for(i = 53; i<= 103; i++)
+	{
+		cb = cb - 5; 
+		b[i] = cb / 255;
+	}  
+	for(i = 104; i<= 205; i++)
+	{
+		b[i] = 0;
+	} 
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//! Initialize OpenGL colortable
+////////////////////////////////////////////////////////////////////////////////
+void openglinit()
+{
+	printf("openglinit!!!\n");
+	colortable();				// Initialize the color table for intensity plots
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//! Temporal Window Drawing Function
+////////////////////////////////////////////////////////////////////////////////
+void drawTemporal( int t1, float t2, float i1, float i2, int flag)
+{
+	printf("drawingTemporal\n");
+	if(flag == 1)
+	{
+		int x;
+		int val = 0;
+		float ycal = 0;
+		float yinit = 0;
+	  	glDisable( GL_LIGHTING );
+		glPushMatrix(); // GL_MODELVIEW is default
+		glScalef(1.0 / (t2 - t1), 1.0 / (i2 - i1), 1.0);
+		glTranslatef(-t1, -i1, 0.0);
+	  	glLineWidth(2.0);
+	  	glLineWidth(4.0);
+		glBegin(GL_LINE_STRIP); 
+		glColor3f(0.0, 0.0, 255.0);
+		for(x = t1; x < t2+1; x++)
+		{
+	//		printf("fTemporal2D[%d]:%f\n", x, pow(cuCabs(fTemporal2D[x])/E0,2));
+			ycal = pow(cuCabs(fTemporal2D[x])/E0,2);
+			val = floor(ycal * 205 + .5);
+	//		printf("ycal:%f\n", ycal);
+	//		printf("val:%d\n", val);
+			glColor3f(rt[val], g[val], b[val]);
+			glVertex2f(x, ycal);
+		}
+		glVertex2f((int)(t2+1), pow(cuCabs(fTemporal2D[(int)t2]),2));		// Repeats last value to create symmetrical output
+
+		glEnd();
+
+		glPopMatrix();
+	 	glEnable( GL_LIGHTING );
+	}
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+//! Spatial Window Drawing Function
+////////////////////////////////////////////////////////////////////////////////
+float drawSpatial(int mt, int flag)
+{
+	float intensity = 0.0;
+	printf("drawingSpatial\n");
+	if(flag == 1)
+	{
+		double nTheta = 72.0;
+		double theta = 0.0;
+		double dTheta = (2.0*pi)/nTheta;
+		int val0 = 0;
+		int val1 = 0;
+		int val2 = 0;
+		double xcal[3], ycal[3], zcal[3];
+	  	glDisable( GL_LIGHTING );
+		glPushMatrix(); // GL_MODELVIEW is default
+		glScalef(1.0 / (r[nr-1] - r[0]), 1.0 / (r[nr-1] - r[0]), 1.0);
+	  	glLineWidth(4.0);
+		glBegin(GL_TRIANGLES); 
+		glColor3f(0.0, 0.0, 255.0);
+		printf("_____________________________\n");
+		for(j=0; j<nTheta; j++)
+		{
+			for(i=0; i<nr-1; i++)
+			{
+				//---First Triangle---//
+	//			if(i==nr-2)
+				{
+	//				printf("first\n");
+	//				printf("j:%d nTheta:%f, theta:%f, i:%d, nr:%d\n", j, nTheta, theta, i, nr);
+				}
+	//			glNormal3f(0.0,0.0,255.0);
+				xcal[0] = r[i]*cos(theta);
+				ycal[0] = r[i]*sin(theta);
+				zcal[0] = pow(cuCabs(fSpatial3D[i])/E0,2);
+	//			printf("xcal[0]:%f, ycal[0]:%f, zcal[0]:%f\n", xcal[0], ycal[0], zcal[0]);
+				xcal[1] = r[i+1]*cos(theta);
+				ycal[1] = r[i+1]*sin(theta);
+				zcal[1] = pow(cuCabs(fSpatial3D[i+1])/E0,2);
+	//			printf("xcal[1]:%f, ycal[1]:%f, zcal[1]:%f\n", xcal[1], ycal[1], zcal[1]);
+				xcal[2] = r[i+1]*cos(theta+dTheta);
+				ycal[2] = r[i+1]*sin(theta+dTheta);
+				zcal[2] = pow(cuCabs(fSpatial3D[i+1])/E0,2);
+	//			printf("xcal[2]:%f, ycal[2]:%f, zcal[2]:%f\n", xcal[2], ycal[2], zcal[2]);
+				val0 = floor(zcal[0] * 205 + .5);
+				val1 = floor(zcal[1] * 205 + .5);
+				val2 = floor(zcal[2] * 205 + .5);
+	//			printf("first\n");
+				glColor3f(rt[val0], g[val0], b[val0]);
+				glVertex3f(xcal[0], ycal[0], zcal[0]);
+	//			printf("first\n");
+				glColor3f(rt[val1], g[val1], b[val1]);
+				glVertex3f(xcal[1], ycal[1], zcal[1]);
+	//			printf("first\n");
+				glColor3f(rt[val2], g[val2], b[val2]);
+				glVertex3f(xcal[2], ycal[2], zcal[2]);
+				//---Sencond Triangle---//
+	//			if(i==nr-2)
+				{
+	//				printf("second\n");
+				}
+				xcal[1] = r[i]*cos(theta+dTheta);
+				ycal[1] = r[i]*sin(theta+dTheta);
+				zcal[1] = pow(cuCabs(fSpatial3D[i])/E0,2);
+				val1 = floor(zcal[1] * 205 + .5);
+				glColor3f(rt[val0], g[val0], b[val0]);
+				glVertex3f(xcal[0], ycal[0], zcal[0]);
+				glColor3f(rt[val1], g[val1], b[val1]);
+				glVertex3f(xcal[1], ycal[1], zcal[1]);
+				glColor3f(rt[val2], g[val2], b[val2]);
+				glVertex3f(xcal[2], ycal[2], zcal[2]);
+				//---Third Triangle---//
+	//			if(i==nr-2)
+				{
+	//				printf("third\n");
+				}
+				xcal[2] = r[i+1]*cos(theta);
+				ycal[2] = r[i+1]*sin(theta);
+				zcal[2] = pow(cuCabs(fSpatial3D[i+1])/E0,2);
+				val2 = floor(zcal[2] * 205 + .5);
+				glColor3f(rt[val0], g[val0], b[val0]);
+				glVertex3f(xcal[0], ycal[0], zcal[0]);
+				glColor3f(rt[val1], g[val1], b[val1]);
+				glVertex3f(xcal[1], ycal[1], zcal[1]);
+				glColor3f(rt[val2], g[val2], b[val2]);
+				glVertex3f(xcal[2], ycal[2], zcal[2]);
+				//---Fourth Triangle---//
+	//			if(i==nr-2)
+				{
+	//				printf("fourth\n");
+				}
+				xcal[0] = r[i+1]*cos(theta+dTheta);
+				ycal[0] = r[i+1]*sin(theta+dTheta);
+				zcal[0] = pow(cuCabs(fSpatial3D[i+1])/E0,2);
+				val0 = floor(zcal[0] * 205 + .5);
+				glColor3f(rt[val0], g[val0], b[val0]);
+				glVertex3f(xcal[0], ycal[0], zcal[0]);
+				glColor3f(rt[val1], g[val1], b[val1]);
+				glVertex3f(xcal[1], ycal[1], zcal[1]);
+				glColor3f(rt[val2], g[val2], b[val2]);
+				glVertex3f(xcal[2], ycal[2], zcal[2]);
+			}
+			theta = theta + dTheta;
+		}
+		printf("crap\n");
+		glEnd();
+		glPopMatrix();
+	 	glEnable( GL_LIGHTING );
+	}
+	return hmax[mt]/sqrt(1e09);
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+//! Spectral Window Drawing Function
+////////////////////////////////////////////////////////////////////////////////
+void drawSpectral( int N, int flag)
+{
+	printf("drawingSpectral\n");
+	if(flag == 1)
+	{
+		int colorVal;
+		double xcal, ycal;
+		float zcal = (float)N/5.0;			// normalize current z step N.
+		double nTheta = 72.0;
+		double theta = 0.0;
+		double dTheta = (2.0*pi)/nTheta;
+	  	glDisable( GL_LIGHTING );
+		glPushMatrix(); // GL_MODELVIEW is default
+		glScalef(1.0 / (r[nr-1] - r[0]), 1.0 / (r[nr-1] - r[0]), 1.0 / distance_1);
+	  	glLineWidth(4.0);
+		glBegin(GL_POINTS); 
+		glColor3f(0.0, 0.0, 255.0);
+		for(j=0; j<nTheta; j++)
+		{
+			for(i=0; i<nr-1; i++)
+			{
+				colorVal = floor(pow(cuCabs(fSpectral[i])/E0,2) / pow(cuCabs(fSpectral[0])/E0,2) * 205 + .5);
+				xcal = r[i]*cos(theta);
+				ycal = r[i]*sin(theta);
+				glColor3f(rt[colorVal], g[colorVal], b[colorVal]);
+				glVertex3f(xcal, ycal, zcal);
+			}
+			theta = theta + dTheta;
+		}		
+		printf("crap\n");
+		glEnd();
+		glPopMatrix();
+	 	glEnable( GL_LIGHTING );
+	}
+
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+//! SpaceTime Window Drawing Function
+////////////////////////////////////////////////////////////////////////////////
+void drawSpaceTime( int N, int flag )
+{
+	printf("drawingSpaceTime\n");
+	if(flag == 1)
+	{
+		float z = dz_1*(float)N;			// normalize current z step N.
+		int colorVal;
+	  	glDisable( GL_LIGHTING );
+		glPushMatrix(); // GL_MODELVIEW is default
+		glScalef(9.30 / distance_1, 0.2 / (r[nr-1] - r[0]), 1.0);
+		glTranslatef(-distance_1/2.0, 0.0, 0.0);
+	  	glLineWidth(4.0);
+		glBegin(GL_QUADS); 
+		glColor3f(0.0, 0.0, 255.0);
+		for(i=0; i<nr-1; i++)
+		{
+			colorVal = floor(pow(cuCabs(queSpaceTime.head->fSpaceTime[i])/E0,2) / pow(cuCabs(queSpaceTime.head->fSpaceTime[0])/E0,2) * 205 + .5);
+			glColor3f(rt[colorVal], g[colorVal], b[colorVal]);
+			glVertex2f(z, 5.0*r[i]);
+
+			glVertex2f(z + dz_1, 5.0*r[i]);
+
+	//		colorVal = floor(pow(cuCabs(queSpaceTime.head->fSpaceTime[i+1])/E0,2) / pow(cuCabs(queSpaceTime.head->fSpaceTime[0])/E0,2) * 205 + .5);
+			glColor3f(rt[colorVal], g[colorVal], b[colorVal]);
+			glVertex2f(z + dz_1, 5.0*r[i+1]);
+
+			glVertex2f(z, 5.0*r[i+1]);
+
+			colorVal = floor(pow(cuCabs(queSpaceTime.head->fSpaceTime[i])/E0,2) / pow(cuCabs(queSpaceTime.head->fSpaceTime[0])/E0,2) * 205 + .5);
+			glColor3f(rt[colorVal], g[colorVal], b[colorVal]);
+			glVertex2f(z, -5.0*r[i]);
+
+			glVertex2f(z + dz_1, -5.0*r[i]);
+
+	//		colorVal = floor(pow(cuCabs(queSpaceTime.head->fSpaceTime[i+1])/E0,2) / pow(cuCabs(queSpaceTime.head->fSpaceTime[0])/E0,2) * 205 + .5);
+			glColor3f(rt[colorVal], g[colorVal], b[colorVal]);
+			glVertex2f(z + dz_1, -5.0*r[i+1]);
+
+			glVertex2f(z, -5.0*r[i+1]);
+		}
+		glEnd();
+		glPopMatrix();
+	 	glEnable( GL_LIGHTING );
+	}
+
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+//! Temporal Window Drawing Function
+////////////////////////////////////////////////////////////////////////////////
+void drawMaxIntensity( int N, int flag)
+{
+	printf("drawingMaxIntensity\n");
+	if(flag == 1)
+	{
+	  	glDisable( GL_LIGHTING );
+		glPushMatrix(); // GL_MODELVIEW is default
+		glScalef(9.0/distance_1, 4.0/500.0, 1.0);
+		glTranslatef(-distance_1/2.0, -250.0/2.0, 0.0);
+		glPointSize(4.0);
+		glBegin(GL_POINTS); 
+		glColor3f( 0.0, 0.0, 1.0 );
+		glVertex2f(N*dz_1, hmax[N]/sqrt(1e09));
+		glEnd();
+		glPopMatrix();
+	 	glEnable( GL_LIGHTING );
+	}
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+//! Temporal Window Drawing Function
+////////////////////////////////////////////////////////////////////////////////
+float drawBeamWaist( int N, int flag)
+{
+	printf("drawingbeamWaist\n");
+	if(flag == 1)
+	{
+	  	glDisable( GL_LIGHTING );
+		glPushMatrix(); // GL_MODELVIEW is default
+		glScalef(9.30 / distance_1, 1.0 / 2.5, 1.0);
+		glTranslatef(-distance_1/2.0, 0.0, 0.0);
+		//********BeamWaist******//
+		if(csflag == 1)	//Cylindrical Symmetry
+		{
+			HM = pow(cuCabs(f[0 + (nt/2)*nr]),2)/2.0;			//Calculates half the max
+			maxx = pow(cuCabs(f[0 + (nt/2)*nr]),2);			//Calculates the max
+		}
+		else		//No Cylindrical Symmetry
+		{
+			HM = pow(cuCabs(f[(nr/2+1) + (nt/2)*nr]),2)/2.0;		//Calculates half the max
+		}
+		i = 0;
+		found = 0;
+		while(i<nr && found==0)
+		{
+			n = i+ (nt/2)*nr;
+			if(csflag == 1)	//Cylindrical Symmetry
+			{
+				if(pow(cuCabs(f[n]),2) > maxx)
+				{
+					maxx = pow(cuCabs(f[n]),2);
+					HM = maxx / 2.0;
+				}
+				if(pow(cuCabs(f[n]),2) <= HM)
+				{
+					instW0 = 2.0*(dr*i);
+					fprintf(BeamWaist, "%.16f\n", instW0);
+					found = 1;
+				}
+			}
+			else		//No Cylindrical Symmetry
+			{
+				if(pow(cuCabs(f[n]),2) >= HM)
+				{
+					instW0 = 2.0*(rmax-dr*i);
+					fprintf(BeamWaist, "%.16f\n", instW0);
+					found = 1;
+				}
+			}
+			i++;
+		}
+		//******End BeamWaist****//
+		glPointSize(4.0);
+		glBegin(GL_POINTS); 
+		glColor3f( 0.0, 0.0, 1.0 );
+		glVertex2f(N*dz_1, 2.0*instW0);
+		glVertex2f(N*dz_1, -2.0*instW0);
+		glEnd();
+		glPopMatrix();
+	 	glEnable( GL_LIGHTING );
+	}
+	return instW0;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//! Initialize Simulation Parameters and CUDA Device Memory
+////////////////////////////////////////////////////////////////////////////////
+float * initialize(int *sn, int *prints, int propDistance, int rDomain, int xDomain, int yDomain, int tDomain, int zDomain, int iflag, int inlambda0, int inrmax, int intmax, int show_cart, int inLCR, int intaup, int inw0, float inEnergy, int inpf, float inchirp, char *outDirectory) 
+{ 
+	//----------------------------------------------------------
+	// Cuda Direct Compute Stuff (Device Querying and Enabling)
+	//----------------------------------------------------------
+	printf("\n---------------------------\n");
+	printf("Initiating...\n");
+	// Number of GPUs
+	printf("Checking for multiple GPUs...\n");
+	int gpu_n;
+	checkCudaErrors(cudaGetDeviceCount(&gpu_n));
+	printf("CUDA-capable device count: %i\n\n", gpu_n);
+	printf("Number of host CPUs: %d\n", omp_get_num_procs());
+	// Query device properties
+	cudaDeviceProp prop[64];
+	int gpu_count = 0;   // GPUs that meet the criteria
+	for(i=0; i < gpu_n; i++) 
+	{
+		checkCudaErrors(cudaGetDeviceProperties(&prop[i], i));
+		// Only boards based on Fermi can support P2P
+		if (prop[i].major >= 2) 
+		{
+			// This is an array of P2P capable GPUs
+			gpuid[gpu_count++] = i;
+		}
+	}
+	printf("Available Cuda Devices:\n");
+	cudaDeviceProp deviceProp;
+	for(i=0; i<gpu_count; i++ )
+	{
+	    	cudaGetDeviceProperties(&deviceProp, gpuid[i]);
+		printf("%i: %s, Max memory: %.2fMB.\n", gpuid[i], deviceProp.name, deviceProp.totalGlobalMem / 1024.0 / 1024.0);
+	}
+//	printf("gpuid:%d\n",gpuid[0]);
+	printf("\n\nSelect GPUs to Operate:\n");
+	char input[100];
+	printf("---------------------------\n:");
+	gets(input);
+	char delim[] = " ";
+	char *result = strtok(input, delim);
+	int column = 0;
+	int count_gpu = 0;
+	while(result != NULL)
+	{
+		gpuid[column] =  atoi(result);
+		result = strtok(NULL, delim);
+//		gpuid[column] = atoi(result);
+		++column;
+		++count_gpu;
+	}
+	printf("\nTotal gpus requested %i.\n", count_gpu);
+	printf("\nChosen Cuda Devices:\n");
+	for(i=0; i<count_gpu; i++ )
+	{
+	  cudaGetDeviceProperties(&deviceProp, gpuid[i]);
+		printf("GPU%i, %s, Max memory: %.2fMB.\n", gpuid[i], deviceProp.name, deviceProp.totalGlobalMem / 1024.0 / 1024.0);
+	}
+	if(count_gpu>1)
+	{
+		// Check possibility for peer access
+		printf("\nChecking GPU(s) for support of peer to peer memory access...\n");
+		int can_access_peer_0_1, can_access_peer_0_2, can_access_peer_0_3, can_access_peer_0_4, can_access_peer_0_5, can_access_peer_0_6, can_access_peer_0_7;                                        				                        
+		for(i=0;i<count_gpu;i++)
+		{
+			printf("GPU%d Access\n",i);
+			checkCudaErrors(cudaSetDevice(gpuid[i]));
+			for(j=0; j<count_gpu;j++)
+			{
+				if(j!=i)
+				{
+					checkCudaErrors(cudaDeviceCanAccessPeer(&can_access_peer_0_1, gpuid[i], gpuid[j]));
+					printf("> Peer access from %s (GPU%d) -> %s (GPU%d) : %s\n", prop[gpuid[i]].name, gpuid[i], prop[gpuid[j]].name, gpuid[j], can_access_peer_0_1 ? "Yes" : "No");
+				}
+			}
+		}
+		printf("---------------------------\n\n");	
+	}
+	printf("---------------------------\n");
+	// Enable peer access
+	if(count_gpu>1)
+	{
+		printf("\nEnabling peer access between GPUs\n");
+		for(i=0;i<count_gpu;i++)
+		{
+			checkCudaErrors(cudaSetDevice(gpuid[i]));
+			for(j=0; j<count_gpu;j++)
+			{
+				if(j!=i)
+				{
+//					printf("i:%d j:%d\n",i,j);
+					checkCudaErrors(cudaDeviceEnablePeerAccess(gpuid[j], 0));
+				}
+			}
+		}
+		printf("---------------------------\n\n");
+	}
+	//----------------------------------------------------------
+	// End Cuda Direct Compute Stuff
+	//----------------------------------------------------------
+
+	float values[2];
+
+	spaceflag = prints[0];		//Print Spatial Domain
+	plasflag = prints[1];		//Print Plasma Domain
+	intflag = prints[2];		//Print Spatial Video
+	pflag = prints[3];		//Print Plasma Video
+	plasSimflag = prints[4];	//Print Plasma Lifecycle
+
+	iflag = 0;
+	aflag = 0;
+	gflag = 0;
+	fflag = 0;
+	wflag = 0;
+	lflag = 0;
+	vflag = 0;
+	csflag = show_cart;
+
+	zRate = 50;
+	frameRate = 4;
+
+	///////////////////////////////////////////////////////////////////////////////////////////
+	// Simulation Parameters
+	///////////////////////////////////////////////////////////////////////////////////////////
+	s1.x = sn[0]; // Diffraction
+	s2.x = sn[1]; // SPM
+	s3.x = sn[2]; // GVD
+	s4.x = sn[3]; // MPI or MPA
+	s5.x = sn[4]; // self-steepening
+	s6.x = sn[5]; // Plasma Effects
+	s7.x = sn[6]; // Focussing Lens
+	s8.x = 0; // "Dog Eared Gaussian" Input Pulse
+	s9.x = sn[8]; // Initial Power based on power factor "over_pcr"
+	s10.x = sn[9]; // Initial Energy "Ein"
+
+	s1.y = 0; // Diffraction
+	s2.y = 0; // SPM
+	s3.y = 0; // GVD
+	s4.y = 0; // MPI
+	s5.y = 0; // self-steepening
+	s6.y = 0; // Plasma Effects
+	s7.y = 0; // Focussing Lens
+	s8.y = 0; // "Dog Eared Gaussian" Input Pulse
+	s9.y = 0; // Initial Power based on power factor "over_pcr"
+	s10.y = 0; // Initial Energy "Ein"
+
+	distance_1 = propDistance; 
+	distance_2 = 0.0;
+	rmax = inrmax*1.0e-1;  // in cm
+	xmax = 0.0;
+	ymax = 0.3;
+	tmax = intmax * 1.0e-15;
+	printf("tmax:%f\n", tmax);
+
+	nr = rDomain;
+	nt = tDomain;
+
+	dz_1 = distance_1/zDomain;
+	dz_2 = 0.01;
+
+	///////////////////////////////////////////////////////////////////////////////////////////
+	printf("nr: %d \n", nr);
+	printf("nt: %d \n", nt);
+	printf("distance_1: %f \n", distance_1);
+	printf("dz_1: %f \n", dz_1);
+
+	ntot = nr*nt;
+	mem_size = sizeof(cuDoubleComplex)*ntot;
+
+	//---Multi Card Parameters
+	devices = (card *)calloc(count_gpu,sizeof(card));
+	commSize = count_gpu;
+	printf("commSize:%d\n", commSize);
+	datapernode = ntot/commSize;
+	sizedatapernode = sizeof(cuDoubleComplex)*datapernode;
+
+  	uh		= (double complex *)calloc(ntot,sizeof(double complex));
+	f		= (cuDoubleComplex *)calloc(ntot,sizeof(cuDoubleComplex));
+	fold		= (cuDoubleComplex *)calloc(ntot,sizeof(cuDoubleComplex));
+  	k1		= (cuDoubleComplex *)calloc(ntot,sizeof(cuDoubleComplex));
+	k2		= (cuDoubleComplex *)calloc(ntot,sizeof(cuDoubleComplex));
+	k3		= (cuDoubleComplex *)calloc(ntot,sizeof(cuDoubleComplex));
+	k4		= (cuDoubleComplex *)calloc(ntot,sizeof(cuDoubleComplex));
+	devt2		= (cuDoubleComplex *)calloc(ntot,sizeof(cuDoubleComplex));
+	d		= (cuDoubleComplex *)calloc(ntot,sizeof(cuDoubleComplex));
+	rho		= (cuDoubleComplex *)calloc(ntot,sizeof(cuDoubleComplex));
+	hr		= (cuDoubleComplex *)calloc(nr,sizeof(cuDoubleComplex));
+
+	r		= (double*)calloc(nr,sizeof(double));
+	t		= (double*)calloc(nt,sizeof(double));
+	omegat	= (double *)calloc(nt,sizeof(double));
+
+	//---Initialize Each Device's Host Memory
+	for(i=0;i<commSize;i++)
+	{
+		devices[i].foldtemp 	= (cuDoubleComplex *)calloc(datapernode,sizeof(cuDoubleComplex));
+		devices[i].rhotemp 	= (cuDoubleComplex *)calloc(datapernode,sizeof(cuDoubleComplex));
+	}
+
+	cuDoubleComplex *in, *out;
+	cudaMalloc((void**)&in, (nt)*sizeof(cuDoubleComplex));
+	cudaMalloc((void**)&out, (nt)*sizeof(cuDoubleComplex));
+
+//---Setup Frequency and wavelength
+	pi = 4.0*atan(1.0);
+	c0 = 3.0e10; // in cm
+	n0 = 1.0;
+	lambda0 = inlambda0 * 1.0e-07; // in cm		//800nm
+	omega0 = 2.0*pi*c0/lambda0;
+	k0 = omega0/c0;
+//---Setup parameters for the plasma effect
+	tauc = 3.5e-13;
+//---Setup parameters for the rate equation
+//	mp = 7;
+	mp = 8;
+	eg = 1.7623942215e-18;
+	nb = 1.0;
+	hbar = 1.054571726e-34;
+//	sigma = 5.1e-20;
+	sigma = 1.0/(1.7e21*tauc*c0);
+	a = 5e-7;
+	fc = 0.0;
+//	beta7 = 6.5e-82;
+	beta7 = 3.1e-98;
+	consp1 = 0.0;
+	consp2 = (beta7)/(mp*hbar*omega0);
+//	consp3 = -2e-9;
+	consp3 = -5.4e18;
+	cons1.x = (-beta7/2.0);
+	cons1.y = 0.0;
+//---Setup GVD parameter
+	beta2 = 0.2e-30;
+//	beta2 = 0.2e-15;
+//---Setup Kerr effect parameter
+//	n2 = 5.57e-19;
+//	n2 = 4.0e-19;
+	n2 = 3.2e-19;
+	ifacn.x = 0.0;
+    	ifacn.y = omega0*n2/c0;
+//---Setup Chirp
+	chirp = inchirp;
+	printf("chirp:%f\n", chirp);
+//---Setup input pulse 
+	taup = intaup * 1.0e-15;			//45 Femtosecond temporal pulse-width
+	w0 = inw0 * 1.0e-1; // in cm			//0.4 cm beam waist
+//---Adding possibility of a lens
+	lensCurvatureRadius = inLCR;
+//---Cheking for the Rayleigh length
+	double zR = (pi*w0*w0*nb)/lambda0;
+//	printf("Rayleigh Length:%fcm\n", zR);
+//---Set the input power
+	pcr = pow(lambda0,2)/(2.0*pi*n0*n2);
+	over_pcr = inpf;
+	if(s10.x == 1)
+	{
+		Ein = inEnergy * 1.0e-3;			//Input Energy
+	}
+	if(s9.x == 1)
+	{
+		Pin = over_pcr*pcr;
+	}
+	else
+	{
+		Pin = Ein/(taup*sqrt(pi/2.0));
+	}
+	printf("Pin:%f Pcr:%f pf:%f\n",Pin,pcr,Pin/pcr);
+	values[0] = Pin;
+	values[1] = Ein;
+	I0 = (2.0*Pin)/(pi*w0*w0);	//peak input intensity
+	E0 = sqrt(I0);
+//---set delta r and delta t parameters
+	if(csflag == 1)		//Cylindrical Symmetry
+	{
+		dr = rmax/nr;
+	}
+	else			//No Cylindrical Symmetry
+	{
+		dr = 2.0*rmax/nr;
+	}
+	dt = 2.0*tmax/nt;
+//---Set r and t arrays
+	for(i = 0; i < nr; i++)
+	{
+		if(csflag == 1)		//Cylindrical Symmetry
+		{
+			r[i] = i*dr;
+		}
+		else			//No Cylindrical Symmetry
+		{
+			r[i] = -rmax + i*dr;
+		}
+		if(i > 0.0)
+		{
+			hr[i].x = 1.0/r[i];
+		}
+		else
+		{
+			hr[i].x = 0.0;
+		}
+		hr[i].y = 0.0;
+	}
+	for(k = 0; k < nt; k++)
+	{
+		t[k] = -tmax+ k*dt;
+	}
+//---Set number of propagation steps
+	step_num_1 = zDomain; // No. of z steps
+	step_num_2 = distance_2/dz_2; // No. of z steps
+	printf("step_num1:%d step_num2:%d\n", step_num_1, step_num_2);
+	step_num = step_num_1 + step_num_2; // No. of z steps
+
+	hmax		= (double*)calloc(step_num,sizeof(double));
+	mc1.x = -1.0;
+	mc1.y = 0.0;
+
+	///////////////////////////////////////////////////////////////////////////////////////////
+	// Create Output Folder and data files
+	///////////////////////////////////////////////////////////////////////////////////////////
+	sprintf(precursor, "auto");
+	sprintf(directory, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr);	
+	sprintf(directorySpatVids, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/SpatVideos", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr);	
+	sprintf(directoryPlasVids, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/PlasVideos", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr);	
+	sprintf(pathBeamWaist, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/BeamWaist.dat", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr);	
+	sprintf(pathInitR, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/inRPulse.dat", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr);
+	sprintf(pathInitT, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/inTPulse.dat", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr);
+	sprintf(pathtempR, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/inrtemp.dat", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr);
+	sprintf(pathtempT, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/inttemp.dat", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr);
+	sprintf(pathSpatialRealOut, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/spatialIntensityReal%d.dat", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr,fileCount);
+	sprintf(pathSpatialImagOut, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/spatialIntensityImag%d.dat", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr,fileCount);
+	sprintf(pathPlasRealOut, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/plasmaDensityReal%d.dat", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr,fileCount);
+	sprintf(pathPlasImagOut, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/plasmaDensityImag%d.dat", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr,fileCount);
+	sprintf(pathPlasSim, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/plasmaDensitySim.dat", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr);
+	//-----Create Directories-----//
+	rmdir(prevdirectory);
+	*prevdirectory = *directory;
+	outDirectory = directory;
+	if(mkdir(directory, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)!=0)
+	{
+		printf(">>>>>Could not open Output Directory<<<<<\n");
+		exit(1);
+	}
+	if(mkdir(directorySpatVids, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)!=0)
+	{
+		printf(">>>>>Could not open Output Directory<<<<<\n");
+		exit(1);
+	}
+	if(mkdir(directoryPlasVids, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)!=0)
+	{
+		printf(">>>>>Could not open Output Directory<<<<<\n");
+		exit(1);
+	}
+	//-----Create Output Files-----//
+    	if((BeamWaist = fopen(pathBeamWaist,"w")) == NULL) 
+	{
+        	fprintf(stdout,"Coun't open 'BeamWaist' output file\n");
+        	exit(1);
+    	}	
+    	if((intpulse = fopen(pathInitT,"w")) == NULL) 
+	{
+        	fprintf(stdout,"Coun't open 'inTPulse' output file\n");
+        	exit(1);
+    	}
+    	if((inxpulse = fopen(pathInitR,"w")) == NULL) 
+	{
+        	fprintf(stdout,"Coun't open 'inRPulse' output file\n");
+        	exit(1);
+    	}	
+    	if((inttemp = fopen(pathtempT,"w")) == NULL) 
+	{
+        	fprintf(stdout,"Coun't open 'inTPulse' output file\n");
+        	exit(1);
+    	}
+    	if((inxtemp = fopen(pathtempR,"w")) == NULL) 
+	{
+        	fprintf(stdout,"Coun't open 'inRPulse' output file\n");
+        	exit(1);
+    	}	
+	///////////////////////////////////////////////////////////////////////////////////////////
+
+	double noise = 1.00;
+
+	///////////////////////////////////////////////////////////////////////////////////////////
+	// Create Drawing Arrays
+	///////////////////////////////////////////////////////////////////////////////////////////
+	initQueue(&queSpaceTime, &nod1Space, &nod2Space, rDomain);
+	fTemporal2D = (cuDoubleComplex *)calloc(nt,sizeof(cuDoubleComplex));
+	fSpatial3D = (cuDoubleComplex *)calloc(nr,sizeof(cuDoubleComplex));
+	fSpectral = (cuDoubleComplex *)calloc(nr,sizeof(cuDoubleComplex));
+	///////////////////////////////////////////////////////////////////////////////////////////
+	// Initial Pulse
+	///////////////////////////////////////////////////////////////////////////////////////////
+	for (k = 0; k < nt; k++){	
+		for (i = 0; i < nr; i++){
+			n = i + k*nr;
+			if(s7.x ==1)
+			{
+				uh[n] = E0*exp((-(pow(r[i],2))/(w0*w0)))*cexp(-((2*pi/lambda0)*pow(r[i],2)/(2*lensCurvatureRadius))*I)*exp(-t[k]*t[k]/(taup*taup))*cexp(-I*chirp*t[k]*t[k]);
+			}
+			else
+			{
+				uh[n] = E0*exp((-(pow(r[i],2))/(w0*w0)))*exp(-t[k]*t[k]/(taup*taup))*cexp(-I*chirp*t[k]*t[k]);
+			}
+			if(s8.x == 1)
+			{
+				if(i>=35 && i<=45 && k==nt/2)
+				{
+					noise = noise + 0.02;
+					uh[n] = uh[n]*noise;
+				}
+				if(i>45 && i<55 && k==nt/2)
+				{
+					noise = noise - 0.02;
+					uh[n] = uh[n]*noise;
+				}
+			}
+			rho[n].x = 0.0;
+			rho[n].y = 0.0;
+			fold[n].x = creal(uh[n]);
+			fold[n].y = cimag(uh[n]);
+			//***Write to Output Files***//
+			if(i == 0)
+			{
+				fprintf(intpulse,"%e %.16f \n", t[k], pow(cuCabs(fold[n])/E0,2));
+			}
+			if(k == (nt/2))
+			{
+				fprintf(inxpulse,"%e %.16f \n", r[i], pow(cuCabs(fold[n])/E0,2));
+			}
+			//***End Write to Output Files***//
+			//***Write to Printing Arrays***//
+			if(i == 0)
+			{
+				fTemporal2D[k] = fold[n];
+			}
+			if(k == nt/2)
+			{
+				fSpatial3D[i] = fold[n];
+				fSpectral[i] = fold[n];	
+				queSpaceTime.head->fSpaceTime[i] = fold[n];
+				queSpaceTime.head = queSpaceTime.tail;
+				queSpaceTime.tail = queSpaceTime.tail->next;
+			}
+			//***End Write to Printing Arrays***//
+		}
+	}
+	fclose(intpulse);
+	fclose(inxpulse);
+	printf("Printed Initial t Pulse File\n");
+	printf("Printed Initial r Pulse File\n");
+
+	//---Load card domains onto each corresponding host array
+	for(int dev = 0;dev<commSize;dev++)
+	{	
+		int nn = 0;
+//		printf("device:%d\n",dev);
+		for (k = (nt/commSize)*dev; k < (nt/commSize)*(dev+1); k++)
+		{	
+			for (i = 0; i < nr; i++)
+			{
+				n = i + k*nr;
+				nn = n - datapernode*dev;
+				devices[dev].foldtemp[nn] = fold[n];
+				devices[dev].rhotemp[nn] = rho[n];
+				//***Write to Output Files***//
+				if(i == 0 & dev==0)
+				{
+//					fprintf(inttemp,"%e %.16f \n", t[k], pow(cuCabs(devices[dev].foldtemp[nn])/E0,2));
+				}
+				if(k == (nt/2)-1 & dev==0)
+				{
+//					printf("1");
+//					fprintf(inxtemp,"%e %.16f \n", r[i], pow(cuCabs(devices[dev].foldtemp[nn])/E0,2));
+				}
+				//***End Write to Output Files***//
+			}
+		}
+	}
+//	fclose(inttemp);
+//	fclose(inxtemp);
+	printf("Initial pulse split into device host arrays\n");
+	printf("-------------------------------------\n");
+	///////////////////////////////////////////////////////////////////////////////////////////
+
+	///////////////////////////////////////////////////////////////////////////////////////////
+	ifacr.x = 0.0;
+	ifacr.y = 1.0/(2.0*k0);	
+	omegatau.x = 0.0;
+	omegatau.y = omega0*tauc;
+	hone.x = 1.0;
+	hone.y = 0.0;
+//	omegatau = cuCadd(omegatau,hone);		//need for normal propagation
+	dtoc.x = -sigma/2.0;
+	dtoc.y = 0.0;
+	hcoe1.x = 1.0/(2.0*dt);
+	hcoe1.y = 0.0;
+	hcoe2.x = 1.0/(dt*dt);
+	hcoe2.y = 0.0;
+	homeg.x = omega0;
+	homeg.y = 0.0;
+	hjustI.x = 0.0;
+	hjustI.y = 1.0;
+	htwo.x = -2.0;
+	htwo.y = 0.0;
+	hc1.x = 7.0/6.0;
+	hc1.y = 0.0;
+	hc2.x = -1.0/12.0;
+	hc2.y = 0.0;
+	hc3.x = 1.0/(6.0*dr*dr);
+	hc3.y = 0.0;
+	hc4.x = 0.0;
+	hc4.y = (-beta2/2.0);
+	hfour.x = -4.0;
+	hfour.y = 0.0;
+	htwel.x = -12.0;
+	htwel.y = 0.0;
+	hzero.x = 0.0;
+	hzero.y = 0.0;
+	hcx1.x = 1.0/(dr*dr);
+	hcx1.y = 0.0;
+	hcsig = cuCmul(dtoc,omegatau);
+	hc11.x = dz_1/6.0;
+	hc11.y = 0.0;
+	con5 = cuCdiv(cuCmul(ifacn,hjustI),homeg);
+	h2dr.x = 1.0/(2.0*dr);
+	h2dr.y = 0.0;
+	hdt.x = dt;
+	hdt.y = 0.0;
+
+	//////////////////////////////////////////////////////////////////////////////////////////
+	// Device initiation code
+	/////////////////////////////////////////////////////////////////////////////////////////
+	for(i=0;i<commSize;i++)
+	{
+		checkCudaErrors(cudaSetDevice(gpuid[i]));
+
+		cudaMalloc((void**)&devices[i].drho, (ntot)*sizeof(cuDoubleComplex)/commSize);
+		cudaMalloc((void**)&devices[i].dfold, sizeof(cuDoubleComplex)*ntot/commSize);
+		cudaMalloc((void**)&devices[i].df, sizeof(cuDoubleComplex)*ntot/commSize);
+		cudaMalloc((void**)&devices[i].dd, sizeof(cuDoubleComplex)*ntot/commSize);
+		cudaMalloc((void**)&devices[i].ddevt2, sizeof(cuDoubleComplex)*ntot/commSize);
+		cudaMalloc((void**)&devices[i].dk1, sizeof(cuDoubleComplex)*ntot/commSize);
+		cudaMalloc((void**)&devices[i].dk2, sizeof(cuDoubleComplex)*ntot/commSize);
+		cudaMalloc((void**)&devices[i].dk3, sizeof(cuDoubleComplex)*ntot/commSize);
+		cudaMalloc((void**)&devices[i].dk4, sizeof(cuDoubleComplex)*ntot/commSize);
+		cudaMalloc((void**)&devices[i].ddr, sizeof(cuDoubleComplex)*nr);
+		cudaMalloc((void**)&dmax, sizeof(double)*step_num);
+		cudaMalloc((void**)&devices[i].dabs, sizeof(double)*ntot/commSize);
+		cudaMalloc((void**)&devices[i].mx, sizeof(int));
+
+		MBs_den = 1024.0 * 1024.0;
+		device_memory_amount = 0.0f;  //in MBs
+		device_memory_amount += (float) (ntot)*sizeof(cuDoubleComplex)*10 / MBs_den;  
+		device_memory_amount += (float) (step_num)*sizeof(double)*2 / MBs_den; 
+		printf("the memory used for device %d  is  %.2f MB\n", commSize, device_memory_amount); 
+
+		cudaMemset(devices[i].dd, 0, (ntot/commSize)*sizeof(cuDoubleComplex));
+		cudaMemset(devices[i].ddevt2, 0, (ntot/commSize)*sizeof(cuDoubleComplex));
+		cudaMemset(devices[i].drho, 0, (ntot/commSize)*sizeof(cuDoubleComplex));
+		cudaMemset(devices[i].dk1, 0, (ntot/commSize)*sizeof(cuDoubleComplex));
+		cudaMemset(devices[i].dk2, 0, (ntot/commSize)*sizeof(cuDoubleComplex));
+		cudaMemset(devices[i].dk3, 0, (ntot/commSize)*sizeof(cuDoubleComplex));
+		cudaMemset(devices[i].dk4, 0, (ntot/commSize)*sizeof(cuDoubleComplex));
+		cudaMemset(devices[i].dabs, 0, (ntot/commSize)*sizeof(double));
+		cudaMemset(dmax, 0, sizeof(double)*step_num);
+
+		cudaMemcpy(devices[i].ddr, hr, nr*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+		cudaMemcpy(devices[i].dfold, devices[i].foldtemp, sizeof(cuDoubleComplex)*datapernode, cudaMemcpyHostToDevice);
+		cudaMemcpy(devices[i].drho, devices[i].rhotemp, sizeof(cuDoubleComplex)*datapernode, cudaMemcpyHostToDevice);
+
+		cudaMalloc((void**)&difacr, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&difacn, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&domegatau, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&dmc1, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&ds1, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&ds2, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&ds3, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&ds4, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&coe1, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&coe2, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&omeg, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&justI, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&two, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&c1, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&c2, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&c3, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&c4, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&four, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&twel, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&zero, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&cx1, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&csig, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&one, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&c11, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&dconsp1, sizeof(double)*1);
+		cudaMalloc((void**)&dconsp2, sizeof(double)*1);
+		cudaMalloc((void**)&dconsp3, sizeof(double)*1);
+		cudaMalloc((void**)&dmp, sizeof(int)*1);
+		cudaMalloc((void**)&dE0, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&ddt, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&dcon5, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&d2dr, sizeof(cuDoubleComplex)*1);
+		cudaMalloc((void**)&one, sizeof(cuDoubleComplex)*1);
+
+		cudaMemcpyToSymbol("difacr", &ifacr, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);	
+		cudaMemcpyToSymbol("difacn", &ifacn, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);	
+		cudaMemcpyToSymbol("domegatau", &omegatau, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);	
+		cudaMemcpyToSymbol("dmc1", &mc1, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);	
+		cudaMemcpyToSymbol("ds1", &s1, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);	
+		cudaMemcpyToSymbol("ds2", &s2, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("ds3", &s3, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("ds4", &s4, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("ds5", &s5, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("ds6", &s6, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("coe1", &hcoe1, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("coe2", &hcoe2, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("omeg", &homeg, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("justI", &hjustI, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("two", &htwo, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("c1", &hc1, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("c2", &hc2, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("c3", &hc3, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("c4", &hc4, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("four", &hfour, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("twel", &htwel, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("zero", &hzero, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("cx1", &hcx1, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("csig", &hcsig, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("one", &hone, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("c11", &hc11, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("dconsp1", &consp1, sizeof(double), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("dconsp2", &consp2, sizeof(double), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("dconsp3", &consp3, sizeof(double), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("dmp", &mp, sizeof(int), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("dE0", &E0, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("ddt", &hdt, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("dcon5", &con5, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol("d2dr", &h2dr, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+	}
+
+	//OpenMP Variables
+	printf("commsize:%d\n",commSize);
+	omp_set_num_threads(commSize);
+
+	ddz.x = dz_1;;
+	ddz.y = 0.0;
+	two1.x = 2.0;
+	two1.y = 0.0;
+	cc11 = cuCdiv(ddz,two1);
+
+	char pathParams[75];
+	sprintf(pathParams, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/RuntimeParameters.txt",   nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr);
+	FILE *params;
+    	if((params = fopen(pathParams,"w")) == NULL) 
+	{
+        	fprintf(stdout,"Coun't open 'RuntimeParameters.txt' output file\n");
+        	exit(1);
+    	}	
+	fprintf(params,"nr:%d\nnt:%d\ndz1:%.5fcm\ndz2:%.5fcm\ndistance1:%3.0fcm\ndistance2:%3.0fcm\nw0:%.2fcm\ntaup:%2.2e\nlambda0:%e\nlensCurvatureRadius:%.2fcm\nInputEnergy(Ein):%f\nInputPower(Pin):%f\nCriticalPower(pcr):%f\nPowerFactor(over_pcr):%f\nInputIntensity(I0):%f\nE0:%f\nTime:%fsec\nMemory:%.2fMB\n", nr,nt,dz_1,dz_2,distance_1,distance_2,w0,taup,lambda0,lensCurvatureRadius,Ein,Pin,pcr,over_pcr,I0,E0,elapsed_gpu,device_memory_amount);
+	fprintf(params,"rmax:%fcm\ntmax:%esec\ns1:%f\ns2:%f\ns3:%f\ns4:%f\ns5:%f\ns6:%f\ns7:%f\ns8:%f\ns9:%f\ns10:%f\n", rmax,tmax,s1.x,s2.x,s3.x,s4.x,s5.x,s6.x,s7.x,s8.x,s9.x,s10.x);
+	fprintf(params,"iflag:%d\naflag:%d\ngflag:%d\ncsflag:%d\nfflag:%d\nwflag:%d\nframeRate:%d\nstepRate:%d\ntotalSteps:%d\n",iflag,aflag,gflag,csflag,fflag,wflag,frameRate,zRate,step_num_1+step_num_2);
+	printf("Printed Runtime Parameters File\n");
+	fclose(params);
+
+	return values;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//! Run program for GUI case
+////////////////////////////////////////////////////////////////////////////////
+void runSim(int mt) 
+{
+//	printf("stepnum_1:%f, nr:%d, nt:%d, dz_1:%f, distance_1:%f, zDomain:%d\n", step_num_1, nr, nt, dz_1, distance_1, zDomain);
+	// setup device Grid
+	dim3 grid(nr/xthreads);
+	dim3 threads(xthreads);
+
+#pragma omp parallel private(nthreads, tid, mt, tstart, tend, prev, nex)
+	{
+		tid = omp_get_thread_num();
+		nthreads = omp_get_num_threads();
+		checkCudaErrors(cudaSetDevice(gpuid[tid]));
+		CUDA_SAFE_CALL(cudaGetDevice(&gpuid[tid]));
+
+		prev = tid - 1;
+		nex = tid + 1;
+
+		if(tid == 0)prev = nthreads-1;
+		if(tid == (nthreads - 1))nex = 0;
+
+  		tstart = tid*nt/nthreads;
+		tend = tstart + nt/nthreads;
+
+		printf("tid:%d  nthreads:%d  start:%d  end:%d  nex:%d prev:%d\n",tid,nthreads,tstart,tend,nex,prev);
+
+		//********Adaptive Z*********//
+/*		if(mt == step_num_1)
+		{
+			printf("----------Change of dz--------\n");
+			hc11.x = dz_2/6.0;
+			cudaMemcpyToSymbol("c11", &hc11, sizeof(cuDoubleComplex), 0, cudaMemcpyHostToDevice);
+			ddz.x = dz_2;
+			ddz.y = 0.0;
+			cc11 = cuCdiv(ddz,two1);
+		}
+*/		//********End Adaptive Z*********//
+
+		#pragma omp barrier
+		cudaThreadSynchronize();
+		update<<<grid, threads>>>(devices[tid].df, devices[tid].dfold, devices[tid].dk1, hzero, nr, nt/nthreads);
+		#pragma omp barrier
+		cudaThreadSynchronize();
+		rk<<<grid, threads>>>(devices[tid].df, devices[nex].df, devices[prev].df, devices[tid].drho, devices[tid].dd, devices[tid].ddevt2, devices[nex].ddevt2, devices[prev].ddevt2, cons1, dr, nr, tstart, tend, devices[tid].dk1, tid, nthreads, devices[tid].ddr);
+		#pragma omp barrier
+		cudaThreadSynchronize();
+/*		update<<<grid, threads>>>(devices[tid].df, devices[tid].dfold, devices[tid].dk1, cc11, nr, nt/nthreads);
+		#pragma omp barrier
+		cudaThreadSynchronize();
+		rk<<<grid, threads>>>(devices[tid].df, devices[nex].df, devices[prev].df, devices[tid].drho, devices[tid].dd, devices[tid].ddevt2, devices[nex].ddevt2, devices[prev].ddevt2, cons1, dr, nr, tstart, tend, devices[tid].dk2, tid, nthreads, devices[tid].ddr);
+		#pragma omp barrier
+		cudaThreadSynchronize();
+		update<<<grid, threads>>>(devices[tid].df, devices[tid].dfold, devices[tid].dk2, cc11, nr, nt/nthreads);
+		#pragma omp barrier
+		cudaThreadSynchronize();
+		rk<<<grid, threads>>>(devices[tid].df, devices[nex].df, devices[prev].df, devices[tid].drho, devices[tid].dd, devices[tid].ddevt2, devices[nex].ddevt2, devices[prev].ddevt2, cons1, dr, nr, tstart, tend, devices[tid].dk3, tid, nthreads, devices[tid].ddr);
+		#pragma omp barrier
+		cudaThreadSynchronize();
+		update<<<grid, threads>>>(devices[tid].df, devices[tid].dfold, devices[tid].dk3, ddz, nr, nt/nthreads);
+		#pragma omp barrier
+		cudaThreadSynchronize();
+		rk<<<grid, threads>>>(devices[tid].df, devices[nex].df, devices[prev].df, devices[tid].drho, devices[tid].dd, devices[tid].ddevt2, devices[nex].ddevt2, devices[prev].ddevt2, cons1, dr, nr, tstart, tend, devices[tid].dk4, tid, nthreads, devices[tid].ddr);
+		#pragma omp barrier
+		cudaThreadSynchronize();
+		final<<<grid, threads>>>(devices[tid].df, devices[tid].dfold, devices[tid].dk1, devices[tid].dk2, devices[tid].dk3, devices[tid].dk4, two1, nr, nt, devices[tid].dabs, tstart, tend);
+		#pragma omp barrier
+		cudaThreadSynchronize();
+/*		updaterho<<<grid, threads>>>(nr, nt, devices[tid].df, devices[tid].drho, devices[nex].drho, tstart, tend, tid, nthreads);
+		#pragma omp barrier
+		cudaThreadSynchronize();
+*/
+/*		if(tid == 0 && nthreads >1)
+		{
+			for(j=0;j<nthreads-1;j++)
+			{
+				devices[j].mx = cublasIdamax(ntot/nthreads, devices[j].dabs, 1);	
+				devices[j+1].mx = cublasIdamax(ntot/nthreads, devices[j+1].dabs, 1);
+				maxim<<<grid, threads>>>(dmax, devices[j].dabs, devices[j+1].dabs, devices[j].mx, devices[j+1].mx, mt,E0);
+			}
+		}
+		else if(tid == 0 && nthreads ==1)
+		{
+			devices[tid].mx = cublasIdamax(ntot/nthreads, devices[tid].dabs, 1);	
+			maxim<<<grid, threads>>>(dmax, devices[tid].dabs, devices[tid].dabs, devices[tid].mx, devices[tid].mx, mt,E0);
+		}
+*/
+//		devices[tid].mx = cublasIdamax(ntot, dabs, 1);	
+//		maxim<<<grid, threads>>>(dmax, dabs, devices[i].mx, mt);
+		cudaThreadSynchronize();
+
+//		printf("before\n");
+		cudaMemcpy(f+tid*datapernode, devices[tid].df, sizeof(cuDoubleComplex)*datapernode, cudaMemcpyDeviceToHost);
+		cudaMemcpy(rho+tid*datapernode, devices[tid].drho, sizeof(cuDoubleComplex)*datapernode, cudaMemcpyDeviceToHost);
+		cudaMemcpy(hmax, dmax, step_num*sizeof(double), cudaMemcpyDeviceToHost);
+//		printf("after\n");
+
+	}
+
+	for (k = 0; k < nt; k++)
+	{	
+		for (i = 0; i < nr; i++)
+		{
+			n = i + k*nr;
+			//***Write to Output Files***//
+			if(i == 0)
+			{
+				fprintf(inttemp,"%e %.16f \n", t[k], pow(cuCabs(f[n])/E0,2));
+			}
+			if(k == (nt/2))
+			{
+				fprintf(inxtemp,"%e %.16f \n", r[i], pow(cuCabs(f[n])/E0,2));
+			}
+			//***End Write to Output Files***//
+		}
+	}
+	fclose(inttemp);
+	fclose(inxtemp);
+
+	for (k = 0; k < nt; k++)
+	{	
+		for (i = 0; i < nr; i++)
+		{
+			n = i + k*nr;
+			if(i == 0)
+			{
+				fTemporal2D[k] = f[n];
+//				printf("%.16f \n", pow(cuCabs(f[n])/E0,2));
+			}
+			if(k == nt/2)
+			{
+				fSpatial3D[i] = f[n];
+				fSpectral[i] = f[n];
+				queSpaceTime.head->fSpaceTime[i] = f[n];
+				queSpaceTime.head = queSpaceTime.tail;
+				queSpaceTime.tail = queSpaceTime.tail->next;	
+			}
+		}
+	}
+printf("here4.5\n");
+	//********VideoPlots******//
+	if(mt%zRate == 0)
+	{
+		if(intflag == 1)
+		{
+			sprintf(pathSpatVidReal, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/SpatVideos/spatialIntensityVidReal_%d.dat", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr,mt);
+			if(mt!=50)
+			{
+				fclose(spatVidReal);
+			}
+		    	if((spatVidReal = fopen(pathSpatVidReal,"w")) == NULL) 
+			{
+				fprintf(stdout,"Coun't open 'spatialIntensityVidReal_%d_%d.dat' output file\n",mt, k/frameRate);
+				exit(1);
+		    	}
+		}
+		if(pflag == 1)
+		{
+			sprintf(pathPlasVidReal, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/PlasVideos/plasmaDensityVidReal_%d.dat", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr,mt);
+			if(mt!=50)
+			{
+				fclose(plasVidReal);
+			}
+		    	if((plasVidReal = fopen(pathPlasVidReal,"w")) == NULL) 
+			{
+				fprintf(stdout,"Coun't open 'plasmaDensityVidReal_%d_%d.dat' output file\n",mt, k/frameRate);
+				exit(1);
+		    	}
+		}
+		for (k = 0; k < nt; k++)
+		{
+			if(k%frameRate == 0)
+			{
+				for (i = 0; i < nr; i++)
+				{
+					n = i + k*nr;
+					if(intflag == 1)
+					{
+						fprintf(spatVidReal, "%.16f ", cuCabs(f[n])/E0);
+					}
+					if(pflag == 1)
+					{
+						fprintf(plasVidReal, "%.16f ", cuCreal(rho[n]));
+					}
+				}
+				if(intflag == 1)
+				{
+					fprintf(spatVidReal, "\n");
+				}
+				if(pflag == 1)
+				{
+					fprintf(plasVidReal, "\n");
+				}
+			}
+		}
+	}
+	//*******EndVideoPlots******//
+printf("here5\n");
+	//*******PlasmaSimOutput*******//
+	if(plasSimflag == 1)
+	{
+		if(mt == 1)
+		{
+		    	if((plasSim = fopen(pathPlasSim,"w")) == NULL) 
+			{
+				fprintf(stdout,"Coun't open 'plasmaDensitySim.dat' output file\n");
+				exit(1);
+		    	}
+		}
+		k = nt-1;
+		for (i = 0; i < nr; i++)
+		{
+			n = i + k*nr;
+			fprintf(plasSim, "%.16f ", cuCreal(rho[n]));
+		}
+		fprintf(plasSim, "\n");
+	}
+	//*******EndPlasmaSimOutput*******//
+printf("here5.5\n");
+	//*******TotalPulsePlots******//
+	if(spaceflag==1)
+	{
+		printf("printing Total Pulse Plots\n");
+		if(mt%50000 == 0 || mt == 1)
+		{
+			printf("changing File\n");
+			sprintf(pathSpatialRealOut, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/spatialIntensityReal%d.dat", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr,fileCount);
+			if(mt !=1 )
+			{
+				fclose(spatialRealOut);
+			}
+		    	if((spatialRealOut = fopen(pathSpatialRealOut,"w")) == NULL) 
+			{
+				fprintf(stdout,"Coun't open 'spatialIntensityReal.dat' output file\n");
+				exit(1);
+		    	}
+			sprintf(pathSpatialImagOut, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/spatialIntensityImag%d.dat", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr,fileCount);
+			if(mt !=1 )
+			{
+				fclose(spatialImagOut);
+			}
+		    	if((spatialImagOut = fopen(pathSpatialImagOut,"w")) == NULL) 
+			{
+				fprintf(stdout,"Coun't open 'spatialIntensityImag.dat' output file\n");
+				exit(1);
+		    	}
+		}
+	//*******EndPlasmaSimOutput*******//
+printf("here5.6\n");
+		for (k = 0; k < nt; k++)
+		{
+			for (i = 0; i < nr; i++)
+			{
+				n = i + k*nr;
+				if(k == (nt/2))
+				{
+					if(cuCabs(f[n])/sqrt(1e09) > 1e80)
+					{
+						printf("test failed at step %d\n", mt);
+						exit(1);
+					}
+					fprintf(spatialRealOut, "%.16f ", cuCreal(f[n])/E0);
+					fprintf(spatialImagOut, "%.16f ", cuCimag(f[n])/E0);
+				}
+			}
+		}
+	//*******EndPlasmaSimOutput*******//
+printf("here5.7\n");
+		fprintf(spatialRealOut, "\n");
+		fprintf(spatialImagOut, "\n");
+	}
+printf("shitty\n");
+	if(plasflag==1)
+	{
+		if(mt%50000 == 0 || mt == 1)
+		{
+			sprintf(pathPlasRealOut, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/plasmaDensityReal%d.dat", nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr,fileCount);
+			if(mt!=1)
+			{
+				fclose(plasRealOut);
+			}
+		    	if((plasRealOut = fopen(pathPlasRealOut,"w")) == NULL) 
+			{
+				fprintf(stdout,"Couldn't open 'plasmaDensityReal.dat' output file\n");
+				exit(1);
+		    	}
+			fileCount++;
+		}
+
+		for (k = 0; k < nt; k++)
+		{
+			for (i = 0; i < nr; i++)
+			{
+				n = i + k*nr;
+				if(k == (nt/2))
+				{
+					if(cuCabs(f[n])/sqrt(1e09) > 1e80)
+					{
+						printf("test failed at step %d\n", mt);
+						exit(1);
+					}
+					fprintf(plasRealOut, "%.16f ", cuCreal(rho[n]));
+				}
+			}
+		}
+		fprintf(plasRealOut, "\n");
+	}
+	//*******EndTotalPulsePlots******//
+	//*******Max Plot*********//
+	if(mt == 1)
+	{
+		sprintf(pathMax,    "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/maximum.dat",   nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr);
+	    	if((maxValues = fopen(pathMax,"w")) == NULL) 
+		{
+			fprintf(stdout,"Couldn't open 'maximum.dat' output file\n");
+			exit(1);
+	    	}
+	}
+	fprintf(maxValues, "%f %.64f \n", mt*dz_1, hmax[mt]/sqrt(1e09));
+}
+
+void temp2()
+{
+// End of Z-Loop
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//! Run program for command line case
+////////////////////////////////////////////////////////////////////////////////
+void runSimNoGUI(int crap) 
+{
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//! Finalize and Clean Up
+////////////////////////////////////////////////////////////////////////////////
+void finalize() 
+{
+	cudaMemcpy(f, df, ntot*sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+	///////////////////////////////////////////////////////////////////////////////////////////
+	// Create Output
+	///////////////////////////////////////////////////////////////////////////////////////////
+	printf("\n-------------------------------------\n");
+	char pathFinalX[75];
+	char pathFinalT[75];
+	sprintf(pathFinalX, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/endRPulse.dat",		nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr);
+	sprintf(pathFinalT, "DataOutput/%dr%dt%.3fdz1%.3fdz2%3.0fz1%3.0fz2%.2fpf/endTPulse.dat", 		nr,nt,dz_1,dz_2,distance_1,distance_2,over_pcr);	
+	FILE *tpulse;
+    	if((tpulse = fopen(pathFinalT,"w")) == NULL) 
+	{
+        	fprintf(stdout,"Coun't open 'endTPulse.dat' output file\n");
+        	exit(1);
+    	}
+	FILE *rpulse;
+    	if((rpulse = fopen(pathFinalX,"w")) == NULL) 
+	{
+        	fprintf(stdout,"Coun't open 'endRPulse.dat' output file\n");
+        	exit(1);
+    	}
+
+	for (k = 0; k < nt; k++){	
+		for (i = 0; i < nr; i++){
+			n = i + k*nr;
+			if(i == (0))
+			{
+				fprintf(tpulse, "%e %.16f\n", t[k], pow(cuCabs(f[n])/E0,2));
+			}
+			if(k == (nt/2))
+			{
+				fprintf(rpulse, "%e %.16f\n", r[i], pow(cuCabs(f[n])/E0,2));
+			}
+		}
+	}
+	fclose(tpulse);
+	fclose(rpulse);
+	printf("Printed End XPulse and TPulse Files\n");
+	printf("\n-------------------------------------\n");
+
+/*	double xaxis = -dz_1;
+	for(i = 0; i < step_num; i++)
+	{
+		if(i < step_num_1)
+		{
+			xaxis = xaxis+dz_1;
+		}
+		else
+		{
+			xaxis = xaxis+dz_2;
+		}
+//		fprintf(maxValues, "%f %.64f \n", (xaxis), hmax[i]/sqrt(1e09));
+	}
+*/	printf("Printed Max File\n");
+	printf("-------------------------------------\n");
+
+	//---Close files
+	fclose(BeamWaist);
+	fclose(inxpulse);
+	fclose(intpulse);
+	fclose(spatialRealOut);
+	fclose(spatialImagOut);
+	fclose(plasRealOut);
+//	fclose(plasImagOut);
+	fclose(spatVidReal);
+	fclose(plasVidReal);
+	fclose(maxValues);
+
+	fclose(plasSim);
+	///////////////////////////////////////////////////////////////////////////////////////////
+
+    	// cleanup memory
+/*	free (uh);
+	free (f);
+	free (k1);
+	free (k2);
+	free (k3);
+	free (k4);
+	free (devt2);
+	free (d);
+	free (r);
+	free (t);
+	free (fxy);
+	free (fo);
+    	free( fold);
+    	free( rho);
+	free( hmax);
+
+    	(cudaFree(dfold));
+    	(cudaFree(drho));
+    	(cudaFree(dd));
+    	(cudaFree(dtemp));
+    	(cudaFree(ddevt2));
+	(cudaFree(dk1));
+	(cudaFree(dk2));
+	(cudaFree(dk3));
+	(cudaFree(dk4));
+	(cudaFree(df));
+	(cudaFree(dmax));
+*/
+//    	cudaThreadExit();
+
+/*    	// cleanup memory
+	free (u);
+	free (f);
+	free (k1);
+	free (k2);
+	free (k3);
+	free (k4);
+	free (devt2);
+	free (d);
+	free (x);
+	free (y);
+	free (t);
+	free (fxy);
+	free (fo);
+    	free( fun);
+    	free( fold);
+    	free( rho);
+	free( hmax);
+    	(cudaFree(dfun));
+    	(cudaFree(dfold));
+    	(cudaFree(drho));
+    	(cudaFree(dd));
+    	(cudaFree(dtemp));
+    	(cudaFree(ddevt2));
+	(cudaFree(dk1));
+	(cudaFree(dk2));
+	(cudaFree(dk3));
+	(cudaFree(dk4));
+	(cudaFree(df));
+	(cudaFree(dmax));
+	(cudaFree(df2));
+	(cudaFree(fSpatial3D));
+
+    	cudaThreadExit();
+*/
+}
