@@ -46,8 +46,11 @@ class meshOBJ
 private:
     std::vector<face> faces;
     std::string filePath;
+	int valid;					//1 then obj loaded correctly, 0 didn't load correctly
 public:
+	meshOBJ();
     meshOBJ(std::string path);
+	void setPath(std::string path);
     void addFace(face newFace);
     unsigned long getSize();
     void print();

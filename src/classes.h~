@@ -14,7 +14,7 @@
 #include <fstream>
 #include <sstream>
 
-//--------vertex Class----------//
+//---------------------vertex Class-------------------------//
 class vertex
 {
 private:
@@ -26,7 +26,7 @@ public:
     void print();
 };
 
-//--------face Class----------//
+//--------------------face Class----------------------------//
 class face
 {
 private:
@@ -40,14 +40,17 @@ public:
     void printVertexNormal();
 };
 
-//--------meshOBJ Class----------//
+//---------------------meshOBJ Class------------------------//
 class meshOBJ
 {
 private:
     std::vector<face> faces;
     std::string filePath;
+	int valid;
 public:
+	meshOBJ();
     meshOBJ(std::string path);
+	void setPath(std::string path);
     void addFace(face newFace);
     unsigned long getSize();
     void print();

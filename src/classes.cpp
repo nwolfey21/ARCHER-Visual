@@ -80,9 +80,18 @@ void face::printVertexNormal()
     vN[2].print();
 }
 //--------meshOBJ Class----------//
+meshOBJ::meshOBJ()
+{
+//	faces[0] = *new face();
+	filePath = "not initialized";
+}
 meshOBJ::meshOBJ(std::string path)
 {
     filePath = path;
+}
+void meshOBJ::setPath(std::string path)
+{
+	filePath = path;
 }
 void meshOBJ::addFace(face newFace)
 {
@@ -113,7 +122,12 @@ void meshOBJ::loadOBJ()
 	if (!myFile.is_open()) 
 	{
 		 std::cout << "Error opening file " << filePath << std::endl;
+		 valid = 0;
   	}
+	else
+	{
+		valid = 1;
+	}
     
     while(getline(myFile,dataLine))
     {
