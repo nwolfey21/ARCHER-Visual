@@ -25,39 +25,45 @@ Currently: 04/19/2014
 #include <unistd.h>
 // includes
 #include "queue.h"
+#include "classes.h"
 /* OpenGL Code Headers */
 #include <GL/glui.h>
 
-//---File Variables---//
-int fileCount = 1;
-char precursor[10];
-char directory[75];
-char prevdirectory[75];	
-char directorySpatVids[75];
-char directoryPlasVids[75];	
-char pathPlasSim[100];
-char pathMax[100];
-FILE *maxValues;
-//---Various Variables---//
-unsigned int step_num, step_num_1, step_num_2, i, j, k, n, nr, nt, mp, found, frameRate, zRate, ntot, mem_size;
-unsigned int fflag, iflag, mflag, aflag, gflag, csflag, wflag, lflag, vflag, pflag, intflag, spaceflag, plasflag, plasSimflag, maxflag;
-double Ein, Pin, I0;
-double distance, distance_1, distance_2, xmax, ymax, rmax, tmax, dz, dz_1, dz_2, dr, dt, w0, pcr, over_pcr;
-double c0, n0, lambda0, omega0, pi, beta2, n2, E0, sigma, tauc, taup, HM, maxx, instW0;
-double eg, hbar, consp2, k0, nb, beta7, a, consp1, fc, consp3, *hmax;
-double lensCurvatureRadius;
-float device_memory_amount, chirp, MBs_den;
-//---timing Variables---//
-double elapsed_gpu;
-//clock_t start, end;
-//float time;
-float cstart;
-uint tempTime;
-uint kernelTime;
-//--- Multipliers---//
-int spatialmultiplier = 1;
-int spectralmultiplier = 1;
-int specmult = 1.99;
+void drawOBJs(meshOBJ *obj)
+{
+	printf("drawing Objects\n");
+  	glDisable( GL_LIGHTING );
+	glPushMatrix(); // GL_MODELVIEW is default
+//	glScalef(1.0 / 114.0, 1.0 / 93.0, 1.0/509.0);
+
+	vertex* normal;
+	vertex* vertex;
+
+	glBegin(GL_TRIANGLES); 
+	for(int i=43;i<44;i++)
+	{
+		if(obj[i].isValidated())
+		{
+			glColor3f(0.0, 0.0, 1.5*i);
+			for(unsigned int j=0;j<obj[i].getSize();j++)
+			{
+				normal = obj[i].getNormals(j);
+				vertex = obj[i].getVertices(j);
+				//Render 1 Face
+				glNormal3f(normal[0].getX(),normal[0].getY(),normal[0].getZ());
+				glVertex3f(vertex[0].getX(),vertex[0].getY(),vertex[0].getZ());
+				glNormal3f(normal[1].getX(),normal[1].getY(),normal[1].getZ());
+				glVertex3f(vertex[1].getX(),vertex[1].getY(),vertex[1].getZ());
+				glNormal3f(normal[2].getX(),normal[2].getY(),normal[2].getZ());
+				glVertex3f(vertex[2].getX(),vertex[2].getY(),vertex[2].getZ());
+			}
+		}
+	}
+	printf("crap\n");
+	glEnd();
+	glPopMatrix();
+ 	glEnable( GL_LIGHTING );
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 //! Spatial Window Drawing Function
@@ -170,5 +176,5 @@ float drawSpatial(int mt, int flag)
 		glPopMatrix();
 	 	glEnable( GL_LIGHTING );
 	}
-*/	return hmax[mt]/sqrt(1e09);
+*/	return 2;
 };

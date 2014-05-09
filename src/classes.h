@@ -24,6 +24,9 @@ public:
     vertex(float p1, float p2, float p3);   //Initialization constructor
     vertex(vertex const &v);                //Copy constructor
     void print();
+	float getX();
+	float getY();
+	float getZ();
 };
 
 //--------------------face Class----------------------------//
@@ -38,6 +41,8 @@ public:
     face(face const&f);
     void printVertex();
     void printVertexNormal();
+	vertex* getNormals();
+	vertex* getVertices();
 };
 
 //---------------------meshOBJ Class------------------------//
@@ -55,6 +60,9 @@ public:
     unsigned long getSize();
     void print();
     void loadOBJ();
+	int isValidated();
+	vertex* getNormals(int faceIndex);
+	vertex* getVertices(int faceIndex);
 };
 
 #endif /* defined(__importOBJ__vertex__) */

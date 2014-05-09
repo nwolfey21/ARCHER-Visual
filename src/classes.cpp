@@ -32,6 +32,18 @@ void vertex::print()
 {
     std::cout << p[0] << " " << p[1] << " " << p[2] << std::endl;
 }
+float vertex::getX()
+{
+	return p[0];
+}
+float vertex::getY()
+{
+	return p[1];
+}
+float vertex::getZ()
+{
+	return p[2];
+}
 //--------face Class----------//
 face::face()
 {
@@ -78,6 +90,13 @@ void face::printVertexNormal()
     vN[1].print();
     std::cout << "  vertexNormal3: ";
     vN[2].print();
+}
+vertex* face::getNormals()
+{
+	return vN;
+}vertex* face::getVertices()
+{
+	return v;
 }
 //--------meshOBJ Class----------//
 meshOBJ::meshOBJ()
@@ -157,4 +176,16 @@ void meshOBJ::loadOBJ()
         }
     }
 	std::cout << "finished loading " << filePath << std::endl;
+}
+int meshOBJ::isValidated()
+{
+	return valid;
+}
+vertex* meshOBJ::getNormals(int faceIndex)
+{
+	return faces.at(faceIndex).getNormals();
+}
+vertex* meshOBJ::getVertices(int faceIndex)
+{
+	return faces.at(faceIndex).getNormals();
 }

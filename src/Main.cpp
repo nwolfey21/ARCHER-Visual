@@ -166,8 +166,8 @@ void control_cb( int control )
 		}
 	}
 	else if(control == DRAW)
-	{
-		
+	{	
+		printf("Draw call back\n");
 		glutSetWindow(spatialWindow);
 		spatialDisplay();
 	}
