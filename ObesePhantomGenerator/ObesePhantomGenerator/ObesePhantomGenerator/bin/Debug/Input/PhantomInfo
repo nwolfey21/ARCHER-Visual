@@ -1,0 +1,122 @@
+#ID                  Mass[g]            Density[gcm^-3]      Volume[cm^3]        Name
+1                   7                   1.02                6.86                Adrenal, left
+2                   7                   1.02                6.86                Adrenal, right
+3                   39.44               1.03                38.29               Extrathoracic (ET)
+5                   31                  1.05                29.52               Oral mucosa, tongue
+7                   10                  1.03                9.71                Trachea
+8                   30                  1.03                29.13               Bronchi
+9                   0.85                1.06                0.8                 Blood vessels, head
+10                  271.93              1.06                256.54              Blood vessels, trunk
+11                  15.72               1.06                14.83               Blood vessels, arms
+12                  83.04               1.06                78.34               Blood vessels, legs
+13                  135.26              1.92                70.45               Humeri, upper half, cortical
+14                  184.86              1.2                 154.05              Humeri, upper half, spongiosa
+15                  33.48               0.98                34.16               Humeri, upper half, medullary cavity
+16                  128.03              1.92                66.68               Humeri, lower half, cortical
+17                  59.73               1.11                53.81               Humeri, lower half, spongiosa
+18                  37.13               0.98                37.89               Humeri, lower half, medullary cavity
+19                  270.8               1.92                141.04              Ulnae and radii:Ulnae and radii, cortical
+20                  181.91              1.11                163.88              Ulnae and radii, spongiosa
+21                  22.67               0.98                23.13               Ulnae and radii, medullary cavity
+22                  179.74              1.92                93.61               Wrists and hand bones, cortical
+23                  139.59              1.11                125.76              Wrists and hand bones, spongiosa
+24                  47.78               1.92                24.89               Clavicles, cortical
+25                  53.06               1.15                46.14               Clavicles, spongiosa
+26                  562.85              1.92                293.15              Cranium, cortical
+27                  451.06              1.16                388.84              Cranium, spongiosa
+28                  261.68              1.92                136.29              Femora, upper half, cortical
+29                  472.05              1.12                421.47              Femora, upper half, spongiosa
+30                  25.78               0.98                26.31               Femora, upper half, medullary cavity
+31                  294.09              1.92                153.17              Femora, lower half, cortical
+32                  438.57              1.11                395.11              Femora, lower half, spongiosa
+33                  80.89               0.98                82.54               Femora, lower half, medullary cavity
+34                  531.35              1.92                276.74              Tibiae, fibulae and patellae, cortical
+35                  729.38              1.11                657.1               Tibiae, fibulae and patellae, spongiosa
+36                  78.67               0.98                80.28               Tibiae, fibulae and patellae, medullary cavity
+37                  232.56              1.92                121.13              Ankles and foot bones, cortical
+38                  507.78              1.11                457.46              Ankles and foot bones, spongiosa
+39                  76.12               1.92                39.65               Mandible, cortical
+40                  73.9                1.23                60.08               Mandible, spongiosa
+41                  398.62              1.92                207.61              Pelvis, cortical
+42                  681.18              1.12                608.2               Pelvis, spongiosa
+43                  365.16              1.92                190.19              Ribs, cortical
+44                  520.06              1.17                444.5               Ribs, spongiosa
+45                  221.13              1.92                115.17              Scapulae, cortical
+46                  192.21              1.18                162.89              Scapulae, spongiosa
+47                  102.92              1.92                53.6                Cervical spine, cortical
+48                  73.55               1.05                70.05               Cervical spine, spongiosa
+49                  286.58              1.92                149.26              Thoracic spine, cortical
+50                  335.34              1.07                313.4               Thoracic spine, spongiosa
+51                  186.19              1.92                96.97               Lumbar spine, cortical
+52                  302.07              1.11                272.14              Lumbar spine, spongiosa
+53                  109.23              1.92                56.89               Sacrum, cortical
+54                  173.51              1.03                168.46              Sacrum, spongiosa
+55                  9.89                1.92                5.15                Sternum, cortical
+56                  56.31               1.04                54.14               Sternum, spongiosa
+58                  88.67               1.1                 80.61               Cartilage
+61                  1450                1.04                1394.23             Brain
+62                  7.5                 0.95                7.89                Breast, left, adipose tissue
+63                  4.99                1.02                4.89                Breast, left, glandular tissue
+64                  7.5                 0.95                7.89                Breast, right, adipose tissue
+65                  4.99                1.02                4.89                Breast, right, glandular tissue
+66                  0.2                 1.1                 0.18                Eye lens, left
+67                  7.3                 1.03                7.09                Eye bulb, left
+68                  0.2                 1.1                 0.18                Eye lens, right
+69                  7.3                 1.03                7.09                Eye bulb, right
+70                  10                  1.03                9.71                Gall bladder wall
+71                  58                  1.03                56.31               Gall bladder contents
+72                  150                 1.04                144.23              Stomach wall
+73                  250                 1.04                240.38              Stomach contents
+75                  1000                1.04                961.54              Small intestine
+76                  89.99               1.04                86.53               Ascending colon wall
+77                  55.02               1.04                52.9                Ascending colon contents
+78                  60                  1.04                57.69               Transverse colon wall, right
+79                  95                  1.04                91.35               Transverse colon contents, right
+80                  60                  1.04                57.69               Transverse colon wall, left
+81                  40.01               1.04                38.47               Transverse colon contents, left
+82                  89.99               1.04                86.53               Descending colon wall
+83                  35                  1.04                33.65               Descending colon contents
+84                  40.01               1.04                38.47               Sigmoid colon wall
+85                  74.97               1.04                72.09               Sigmoid colon contents
+86                  29.98               1.04                28.83               Rectum wall
+87                  330                 1.05                314.29              Heart wall
+88                  510                 1.06                481.13              Heart contents(blood)
+89                  107.12              1.05                102.02              Kidney, left, cortex
+90                  38.25               1.05                36.43               Kidney, left, medulla
+91                  7.63                1.05                7.27                Kidney, left, pelvis
+92                  109.92              1.05                104.69              Kidney, right, cortex
+93                  39.25               1.05                37.38               Kidney, right, medulla
+94                  7.87                1.05                7.5                 Kidney, right, pelvis
+95                  1800                1.05                1714.29             Liver
+97                  553                 0.25                2212                Lung, left, tissue
+99                  647                 0.25                2588                Lung, right, tissue
+100                 2.26                1.03                2.19                Lymphatic nodes, extrathoracic airways
+101                 6.4                 1.03                6.21                Lymphatic nodes, thoracic airways
+102                 5.98                1.03                5.81                Lymphatic nodes, head
+103                 104.4               1.03                101.36              Lymphatic nodes, trunk
+104                 7.83                1.03                7.6                 Lymphatic nodes, arms
+105                 11.1                1.03                10.78               Lymphatic nodes, legs
+106                 1217.81             1.05                1159.82             Muscle, head
+107                 15006.82            1.05                14292.21            Muscle, trunk
+108                 2750.53             1.05                2619.55             Muscle, arms
+109                 10024.97            1.05                9547.59             Muscle, legs
+110                 40                  1.03                38.83               Oesophagus
+113                 140                 1.05                133.33              Pancreas
+114                 0.6                 1.03                0.58                Pituitary gland
+115                 17                  1.05                16.19               Prostate(male only)
+120                 42.5                1.05                40.48               Salivary glands, left
+121                 42.5                1.05                40.48               Salivary glands, right
+125                 3300                0.45                7333.33             Skin
+126                 30                  1.04                28.85               Spinal cord
+127                 150                 1.06                141.51              Spleen
+128                 50                  2.75                18.18               Teeth
+129                 17.5                1.04                16.83               Testis, left(male only)
+130                 17.5                1.04                16.83               Testis, right(male only)
+131                 25                  1.03                24.27               Thymus
+132                 20                  1.05                19.05               Thyroid
+133                 42                  1.05                40                  Tongue (inner part)
+134                 3                   1.03                2.91                Tonsils
+135                 8.5                 1.03                8.25                Ureter, left
+136                 7.5                 1.03                7.28                Ureter, right
+137                 50                  1.04                48.08               Urinary bladder wall
+138                 200                 1.04                192.31              Urinary bladder contents

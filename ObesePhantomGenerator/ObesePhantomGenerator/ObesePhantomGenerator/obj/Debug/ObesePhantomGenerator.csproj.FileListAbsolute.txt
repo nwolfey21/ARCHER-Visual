@@ -1,0 +1,12 @@
+D:\study\deformation\Obese Phantom Interpolation\task3\ObesePhantomGenerator\ObesePhantomGenerator\bin\Debug\ObesePhantomGenerator.exe
+D:\study\deformation\Obese Phantom Interpolation\task3\ObesePhantomGenerator\ObesePhantomGenerator\bin\Debug\ObesePhantomGenerator.pdb
+D:\study\deformation\Obese Phantom Interpolation\task3\ObesePhantomGenerator\ObesePhantomGenerator\obj\Debug\ResolveAssemblyReference.cache
+D:\study\deformation\Obese Phantom Interpolation\task3\ObesePhantomGenerator\ObesePhantomGenerator\obj\Debug\ObesePhantomGenerator.FormObesePhantomGenerator.resources
+D:\study\deformation\Obese Phantom Interpolation\task3\ObesePhantomGenerator\ObesePhantomGenerator\obj\Debug\ObesePhantomGenerator.Properties.Resources.resources
+D:\study\deformation\Obese Phantom Interpolation\task3\ObesePhantomGenerator\ObesePhantomGenerator\obj\Debug\ObesePhantomGenerator.exe
+D:\study\deformation\Obese Phantom Interpolation\task3\ObesePhantomGenerator\ObesePhantomGenerator\obj\Debug\ObesePhantomGenerator.pdb
+D:\study\deformation\Obese Phantom Interpolation\task3\ObesePhantomGenerator\ObesePhantomGenerator\obj\Debug\ResGen.read.1.tlog
+D:\study\deformation\Obese Phantom Interpolation\task3\ObesePhantomGenerator\ObesePhantomGenerator\obj\Debug\ResGen.write.1.tlog
+D:\study\deformation\Obese Phantom Interpolation\task3\ObesePhantomGenerator\ObesePhantomGenerator\bin\Debug\ObesePhantomGenerator.exe.config
+D:\study\deformation\Obese Phantom Interpolation\task3\ObesePhantomGenerator\ObesePhantomGenerator\obj\Debug\GenerateResource.read.1.tlog
+D:\study\deformation\Obese Phantom Interpolation\task3\ObesePhantomGenerator\ObesePhantomGenerator\obj\Debug\GenerateResource.write.1.tlog

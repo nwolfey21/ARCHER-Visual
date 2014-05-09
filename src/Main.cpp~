@@ -23,7 +23,7 @@ Currently: 04/19/2014
 #include <complex.h>
 
 /* OpenGL Code Headers */
-#include <GL/glui.h>
+#include <GLUI/glui.h>
 
 /*************External Functions***************/
 // Updated
