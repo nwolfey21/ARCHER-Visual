@@ -131,7 +131,7 @@ void meshOBJ::print()
         faces.at(i).printVertexNormal();
     }
 }
-void meshOBJ::loadOBJ()
+void meshOBJ::load()
 {
     std::string dataLine, first;
     std::vector<vertex> v1,n1;
@@ -189,4 +189,56 @@ vertex* meshOBJ::getNormals(int faceIndex)
 vertex* meshOBJ::getVertices(int faceIndex)
 {
 	return faces.at(faceIndex).getVertices();
+}
+//--------particle Class----------//
+particle::particle()
+{
+//	faces[0] = *new face();
+	filePath = "not initialized";
+}
+particle::particle(std::string path)
+{
+    filePath = path;
+}
+void particle::setPath(std::string path)
+{
+	filePath = path;
+}
+unsigned long particle::getSize()
+{
+    return position.size();
+}
+/*void particle::print()
+{
+	std::cout << "size: " << faces.size() << std::endl;
+    for (unsigned int i=0;i<faces.size();i++)
+    {
+        std::cout << "Face" << i << ": ";
+        faces.at(i).printVertex();
+        faces.at(i).printVertexNormal();
+    }
+}
+*/void particle::load()
+{
+    std::string dataLine, first;
+    std::vector<vertex> v1,n1;
+    float tp1,tp2,tp3;
+    std::ifstream myFile;
+    myFile.open(filePath.c_str());
+	if (!myFile.is_open()) 
+	{
+		 std::cout << "Error opening file " << filePath << std::endl;
+  	}
+    
+    while(getline(myFile,dataLine))
+    {
+        std::istringstream iss(dataLine);
+        iss >> tp1 >> tp2 >> tp3;
+		position.push_back(*new vertex(tp1,tp2,tp3));
+    }
+	std::cout << "finished loading " << filePath << std::endl;
+}
+vertex particle::getPosition(int indx)
+{
+	return position.at(indx);
 }

@@ -29,6 +29,7 @@ Currently: 04/19/2014
 // Updated
 float drawSpatial(int N, int flag);
 void drawOBJs(meshOBJ *obj);
+void drawParticles(particle *particles); 
 
 /*************Internal Functions***************/
 void spatialReshape( int x, int y );
@@ -68,7 +69,8 @@ GLUI_Spinner    *light0_spinner, *light1_spinner;
 #define SHOW_ID              302
 #define HIDE_ID              303
 #define PAUSE		     233
-#define LOAD 				 235
+#define LOAD_OBJ 			 235
+#define LOAD_PARTICLES		 237
 #define DRAW 				 236
 
 /********** Miscellaneous global variables **********/
@@ -85,6 +87,7 @@ GLfloat lights_rotation[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
 
 //-----Approved Variables-----//
 meshOBJ objs[138];
+particle particles[10];
 int loaded = 0;					//0 objects have not been loaded, 1 objects have been loaded
 
 /***********************************************************************/
@@ -152,17 +155,30 @@ void control_cb( int control )
 	{
 		spatialBottomSubWIndow->hide();			// disables temporalBottomSubWindow (controls)
 	}
-	else if(control == LOAD)
+	else if(control == LOAD_OBJ)
 	{
-		printf("Load call back\n");
+		printf("Load objects call back\n");
 		loaded = 1;
 		char filepath[200];
 		for(int i=0;i<138;i++)
 		{
-			sprintf(filepath,"/home/noah/Documents/ARCHER/ARCHER-Visual/data/73_adult_male/073kg/%03d.obj",i+1);
+			sprintf(filepath,"data/73_adult_male/073kg/%03d.obj",i+1);
 			std::cout << "loading file: " << filepath << std::endl;
 			objs[i].setPath(filepath);
-			objs[i].loadOBJ();
+			objs[i].load();
+		}
+	}
+	else if(control == LOAD_PARTICLES)
+	{
+		printf("Load particles call back\n");
+		loaded = 1;
+		char particleFilepath[200];
+		for(int i=1;i<10;i++)
+		{
+			sprintf(particleFilepath,"data/particles/particle%dPosition.dat",i);
+			std::cout << "loading file: " << particleFilepath << std::endl;
+			particles[i].setPath(particleFilepath);
+			particles[i].load();
 		}
 	}
 	else if(control == DRAW)
@@ -252,7 +268,7 @@ void draw_spatial_axes( float scale )
 	glVertex3f( 1.77f-1.0f, -0.05f, 0.0 );  glVertex3f( 1.9-1.0f, -0.25f, 0.0 ); 
 	glVertex3f( 1.77f-1.0f, -.25f, 0.0 );  glVertex3f( 1.9-1.0f, -0.05f, 0.0 );
 	/* Letter Y */
-	glColor3f( 0.0, 0.0, 0.0 );
+	glColor3f( 1.0, 0.0, 0.0 );
 	glVertex3f( -0.05f-1.0f, 1.85f+0.25f, 0.0 );  glVertex3f( -0.1-1.0f, 1.74f+0.25f, 0.0 ); 
 	glVertex3f( -0.15f-1.0f, 1.85f+0.25f, 0.0 );  glVertex3f( -0.1-1.0f, 1.74f+0.25f, 0.0 );
 	glVertex3f( -0.1f-1.0f, 1.6f+0.25f, 0.0 );  glVertex3f( -0.1-1.0f, 1.74f+0.25f, 0.0 ); 
@@ -260,20 +276,20 @@ void draw_spatial_axes( float scale )
 	glColor3f( 1.0, 0.0, 0.0 );
 	glVertex3f( 0.0-1.0f, 0.0, 0.0 );  glVertex3f( 2.0-1.0f, 0.0, 0.0 ); 
 	/* Y axis */
-	glColor3f( 0.0, 0.0, 0.0 );
+	glColor3f( 1.0, 0.0, 0.0 );
 	glVertex3f( 0.0-1.0f, 0.0, 0.0 );  glVertex3f( 0.0-1.0f, 2.0+0.25f, 0.0 ); 
 	glEnd();
 	glPopMatrix();
 	glEnable( GL_LIGHTING );
 }
 /***********************************************************************/
-/*                           spatialDisplay()                           */
+/*                           spatialDisplay()                          */
 /***********************************************************************/
 void spatialDisplay( void )
 {
 	float intensity = 0;
 	printf("spatialDisplay \n");
-	glClearColor( .9f, .9f, .9f, 1.0f );
+	glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 	glMatrixMode( GL_PROJECTION );
 
@@ -286,27 +302,20 @@ void spatialDisplay( void )
 	glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
 
 	glLoadIdentity();
-	glTranslatef( 0.0, 0.0, -2.6f );
+	glTranslatef( 0.0, -0.8f, -2.6f );
 	glTranslatef( spatial_pos[0], spatial_pos[1], -spatial_pos[2] ); 
 	glMultMatrixf( view_spatial_rotate );
 
 	glScalef( scale, scale, scale );
 
 	glPushMatrix();
-	glTranslatef( 0.0, 0.0, 0.0 );
-	glMultMatrixf( spatial_rotate );
 
 	draw_spatial_axes(.52f);
 
-	glTranslatef( 0.0, 0.0, 0.0 );
-	glMultMatrixf( spatial_rotate );
-
-//	drawSpatial(0, show_spatial);
-	printf("I passed through here\n");
 	if(loaded)
 	{
-		printf("and here\n");
 		drawOBJs(objs);
+		drawParticles(particles);
 	}
 
 //	glEnable( GL_LIGHTING );
@@ -377,6 +386,9 @@ int main(int argc, char* argv[])
 		glLightfv(GL_LIGHT1, GL_AMBIENT, light1_ambient);
 		glLightfv(GL_LIGHT1, GL_DIFFUSE, light1_diffuse);
 		glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
+
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    	glEnable( GL_BLEND );
 		/***** End OpenGL lights *****/
 
 		/***** Enable z-buferring *****/
@@ -388,7 +400,8 @@ int main(int argc, char* argv[])
 		/***********************************************************************/
 		controlWindow = GLUI_Master.create_glui( "Configuration", 0, 600/*2500*/, 25 );
 
-		new GLUI_Button( controlWindow, "Load Objects", LOAD, control_cb );
+		new GLUI_Button( controlWindow, "Load Objects", LOAD_OBJ, control_cb );
+		new GLUI_Button( controlWindow, "Load particles", LOAD_PARTICLES, control_cb );
 		new GLUI_Button( controlWindow, "Draw Objects", DRAW, control_cb );
 
 		/***********************************************************************/

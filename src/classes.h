@@ -59,10 +59,26 @@ public:
     void addFace(face newFace);
     unsigned long getSize();
     void print();
-    void loadOBJ();
+    void load();
 	int isValidated();
 	vertex* getNormals(int faceIndex);
 	vertex* getVertices(int faceIndex);
+};
+
+//---------------------particle Class------------------------//
+class particle
+{
+private:
+    std::vector<vertex> position;
+    std::string filePath;
+public:
+	particle();
+    particle(std::string path);
+	void setPath(std::string path);
+    unsigned long getSize();
+//    void print();
+    void load();
+	vertex getPosition(int indx);
 };
 
 #endif /* defined(__importOBJ__vertex__) */
