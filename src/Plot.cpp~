@@ -78,7 +78,7 @@ void drawParticles(particle *particles)
 		{
 			v = particles[i].getPosition(j);
 			glPushMatrix(); // GL_MODELVIEW is default
-			glTranslatef(v.getX(),v.getZ(),v.getY());
+			glTranslatef(v.getX(),v.getY(),v.getZ());
 			glutSolidSphere (0.5, 20, 16);
 			glPopMatrix();
 			//Render 1 Face
@@ -94,9 +94,9 @@ void drawParticles(particle *particles)
 	  	glLineWidth(4.0);
 		for(unsigned int j=0;j<particles[i].getSize();j++)
 		{
-			glColor3f(1.0f,0.0f,0.0f);
-			v = particles[i].getPosition(j);
-			glVertex3f(v.getX(),v.getY(),v.getZ());
+//			glColor3f(1.0f,0.0f,0.0f);
+//			v = particles[i].getPosition(j);
+//			glVertex3f(v.getX(),v.getY(),v.getZ());
 		}
 		glEnd();
 	}
