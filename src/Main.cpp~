@@ -166,8 +166,8 @@ void control_cb( int control )
 		}
 	}
 	else if(control == DRAW)
-	{
-		
+	{	
+		printf("Draw call back\n");
 		glutSetWindow(spatialWindow);
 		spatialDisplay();
 	}
@@ -249,19 +249,19 @@ void draw_spatial_axes( float scale )
 	glBegin( GL_LINES );
 	/* Letter X */
 	glColor3f( 1.0, 0.0, 0.0 );
-	glVertex3f( 1.77f, -0.05f, 0.0 );  glVertex3f( 1.9, -0.25f, 0.0 ); 
-	glVertex3f( 1.77f, -.25f, 0.0 );  glVertex3f( 1.9, -0.05f, 0.0 );
+	glVertex3f( 1.77f-1.0f, -0.05f, 0.0 );  glVertex3f( 1.9-1.0f, -0.25f, 0.0 ); 
+	glVertex3f( 1.77f-1.0f, -.25f, 0.0 );  glVertex3f( 1.9-1.0f, -0.05f, 0.0 );
 	/* Letter Y */
 	glColor3f( 0.0, 0.0, 0.0 );
-	glVertex3f( -0.05f, 1.85f, 0.0 );  glVertex3f( -0.1, 1.74f, 0.0 ); 
-	glVertex3f( -0.15f, 1.85f, 0.0 );  glVertex3f( -0.1, 1.74f, 0.0 );
-	glVertex3f( -0.1f, 1.6f, 0.0 );  glVertex3f( -0.1, 1.74f, 0.0 ); 
+	glVertex3f( -0.05f-1.0f, 1.85f+0.25f, 0.0 );  glVertex3f( -0.1-1.0f, 1.74f+0.25f, 0.0 ); 
+	glVertex3f( -0.15f-1.0f, 1.85f+0.25f, 0.0 );  glVertex3f( -0.1-1.0f, 1.74f+0.25f, 0.0 );
+	glVertex3f( -0.1f-1.0f, 1.6f+0.25f, 0.0 );  glVertex3f( -0.1-1.0f, 1.74f+0.25f, 0.0 ); 
 	/* X axis */
 	glColor3f( 1.0, 0.0, 0.0 );
-	glVertex3f( 0.0, 0.0, 0.0 );  glVertex3f( 2.0, 0.0, 0.0 ); 
+	glVertex3f( 0.0-1.0f, 0.0, 0.0 );  glVertex3f( 2.0-1.0f, 0.0, 0.0 ); 
 	/* Y axis */
 	glColor3f( 0.0, 0.0, 0.0 );
-	glVertex3f( 0.0, 0.0, 0.0 );  glVertex3f( 0.0, 2.0, 0.0 ); 
+	glVertex3f( 0.0-1.0f, 0.0, 0.0 );  glVertex3f( 0.0-1.0f, 2.0+0.25f, 0.0 ); 
 	glEnd();
 	glPopMatrix();
 	glEnable( GL_LIGHTING );

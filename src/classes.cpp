@@ -94,7 +94,8 @@ void face::printVertexNormal()
 vertex* face::getNormals()
 {
 	return vN;
-}vertex* face::getVertices()
+}
+vertex* face::getVertices()
 {
 	return v;
 }
@@ -187,5 +188,5 @@ vertex* meshOBJ::getNormals(int faceIndex)
 }
 vertex* meshOBJ::getVertices(int faceIndex)
 {
-	return faces.at(faceIndex).getNormals();
+	return faces.at(faceIndex).getVertices();
 }

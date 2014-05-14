@@ -32,15 +32,15 @@ void vertex::print()
 {
     std::cout << p[0] << " " << p[1] << " " << p[2] << std::endl;
 }
-float vertex::getX();
+float vertex::getX()
 {
 	return p[0];
 }
-float vertex::getY();
+float vertex::getY()
 {
 	return p[1];
 }
-float vertex::getZ();
+float vertex::getZ()
 {
 	return p[2];
 }
@@ -94,7 +94,8 @@ void face::printVertexNormal()
 vertex* face::getNormals()
 {
 	return vN;
-}vertex* face::getVertices()
+}
+vertex* face::getVertices()
 {
 	return v;
 }

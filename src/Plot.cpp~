@@ -34,13 +34,13 @@ void drawOBJs(meshOBJ *obj)
 	printf("drawing Objects\n");
   	glDisable( GL_LIGHTING );
 	glPushMatrix(); // GL_MODELVIEW is default
-//	glScalef(1.0 / 114.0, 1.0 / 93.0, 1.0/509.0);
+	glScalef(1.0 / 100.0, 1.0 / 100.0, 1.0/100.0);
 
 	vertex* normal;
 	vertex* vertex;
 
 	glBegin(GL_TRIANGLES); 
-	for(int i=125;i<126;i++)
+	for(int i=0;i<138;i++)
 	{
 		if(obj[i].isValidated())
 		{
@@ -50,6 +50,7 @@ void drawOBJs(meshOBJ *obj)
 				normal = obj[i].getNormals(j);
 				vertex = obj[i].getVertices(j);
 				//Render 1 Face
+//				printf("obj:%d face:%d normal(%f %f %f) vertex(%f %f %f) \n",i,j,normal[0].getX(),normal[0].getY(),normal[0].getZ(),vertex[0].getX(),vertex[0].getY(),vertex[0].getZ());
 				glNormal3f(normal[0].getX(),normal[0].getY(),normal[0].getZ());
 				glVertex3f(vertex[0].getX(),vertex[0].getY(),vertex[0].getZ());
 				glNormal3f(normal[1].getX(),normal[1].getY(),normal[1].getZ());
@@ -62,7 +63,6 @@ void drawOBJs(meshOBJ *obj)
 	printf("crap\n");
 	glEnd();
 	glPopMatrix();
- 	glEnable( GL_LIGHTING );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
