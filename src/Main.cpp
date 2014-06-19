@@ -42,7 +42,7 @@ float rotationX = 0.0, rotationY = 0.0;
 /** These are the live variables passed into GLUI ***/
 int   light0_enabled = 1;
 int   light1_enabled = 1;
-float light0_intensity = 1.0;
+float light0_intensity = 0.4;
 float light1_intensity = .4;
 int   spatialWindow;
 float scale = 1.0;
@@ -144,19 +144,23 @@ void control_cb( int control )
 	}
 	else if ( control == LIGHT0_INTENSITY_ID ) 
 	{
+		glutSetWindow(spatialWindow);
 		float v[] = {light0_diffuse[0], light0_diffuse[1], light0_diffuse[2], light0_diffuse[3]};
 		v[0] *= light0_intensity;
 		v[1] *= light0_intensity;
 		v[2] *= light0_intensity;
 		glLightfv(GL_LIGHT0, GL_DIFFUSE, v );
+		spatialDisplay();
 	}
 	else if ( control == LIGHT1_INTENSITY_ID ) 
 	{
+		glutSetWindow(spatialWindow);
 		float v[] = {light1_diffuse[0], light1_diffuse[1], light1_diffuse[2], light1_diffuse[3]};
 		v[0] *= light1_intensity;
 		v[1] *= light1_intensity;
 		v[2] *= light1_intensity;
 		glLightfv(GL_LIGHT1, GL_DIFFUSE, v );
+		spatialDisplay();
 	}
 	else if ( control == ENABLE_ID )
 	{
@@ -439,6 +443,8 @@ int main(int argc, char* argv[])
 		new GLUI_Button( controlWindow, "Remove Particles", REMOVEPARTICLES, control_cb );
 		new GLUI_Checkbox( controlWindow, "Light 0",&light0_enabled,LIGHT0_ENABLED_ID,control_cb);
 		new GLUI_Checkbox( controlWindow, "Light 1",&light1_enabled,LIGHT1_ENABLED_ID,control_cb);
+		new GLUI_Button( controlWindow, "Decrease Intensity 0", LIGHT0_INTENSITY_ID, control_cb );
+		new GLUI_Button( controlWindow, "Decrease Intensity 1", LIGHT1_INTENSITY_ID, control_cb );
 
 		/***********************************************************************/
 		/*                     And The Rest....                                */
