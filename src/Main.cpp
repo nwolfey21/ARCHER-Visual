@@ -43,6 +43,7 @@ float rotationX = 0.0, rotationY = 0.0;
 int   light0_enabled = 1;
 int   light1_enabled = 1;
 float light0_intensity = 0.4;
+float light0_intensity2 = 1.4;
 float light1_intensity = .4;
 int   spatialWindow;
 float scale = 1.0;
@@ -63,6 +64,7 @@ GLUI_Spinner    *light0_spinner, *light1_spinner;
 #define LIGHT0_ENABLED_ID    200
 #define LIGHT1_ENABLED_ID    201
 #define LIGHT0_INTENSITY_ID  250
+#define LIGHT0_INTENSITY2_ID 251
 #define LIGHT1_INTENSITY_ID  260
 #define ENABLE_ID            300
 #define DISABLE_ID           301
@@ -149,6 +151,16 @@ void control_cb( int control )
 		v[0] *= light0_intensity;
 		v[1] *= light0_intensity;
 		v[2] *= light0_intensity;
+		glLightfv(GL_LIGHT0, GL_DIFFUSE, v );
+		spatialDisplay();
+	}
+	else if ( control == LIGHT0_INTENSITY2_ID ) 
+	{
+		glutSetWindow(spatialWindow);
+		float v[] = {light0_diffuse[0], light0_diffuse[1], light0_diffuse[2], light0_diffuse[3]};
+		v[0] *= light0_intensity2;
+		v[1] *= light0_intensity2;
+		v[2] *= light0_intensity2;
 		glLightfv(GL_LIGHT0, GL_DIFFUSE, v );
 		spatialDisplay();
 	}
@@ -423,9 +435,13 @@ int main(int argc, char* argv[])
 		glLightfv(GL_LIGHT1, GL_DIFFUSE, light1_diffuse);
 		glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
 
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		/***** Setup OpenGL Material Color *****/
+		glColorMaterial(GL_FRONT_AND_BACK, GL_EMISSION);
+		glEnable(GL_COLOR_MATERIAL);
+
+		/***** Setup OpenGL Transparency *****/
     	glEnable( GL_BLEND );
-		/***** End OpenGL lights *****/
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		/***** Enable z-buferring *****/
 		glEnable(GL_DEPTH_TEST);
@@ -444,7 +460,7 @@ int main(int argc, char* argv[])
 		new GLUI_Checkbox( controlWindow, "Light 0",&light0_enabled,LIGHT0_ENABLED_ID,control_cb);
 		new GLUI_Checkbox( controlWindow, "Light 1",&light1_enabled,LIGHT1_ENABLED_ID,control_cb);
 		new GLUI_Button( controlWindow, "Decrease Intensity 0", LIGHT0_INTENSITY_ID, control_cb );
-		new GLUI_Button( controlWindow, "Decrease Intensity 1", LIGHT1_INTENSITY_ID, control_cb );
+		new GLUI_Button( controlWindow, "Increase Intensity 0", LIGHT0_INTENSITY2_ID, control_cb );
 
 		/***********************************************************************/
 		/*                     And The Rest....                                */

@@ -24,7 +24,8 @@ void drawOBJs(meshOBJ *obj)
 		if(obj[i].isValidated())
 		{
 //			glColor3f(0.0, 0.0, 1.5*i);
-			glColor4f(.8,.78,.32,0.1);
+			glColor4f(0.0f, 0.0f, 1.0f, 0.5f);
+//			glColor4f(.8,.78,.32,0.1);
 			for(unsigned int j=0;j<obj[i].getSize();j++)
 			{
 				normal = obj[i].getNormals(j);
@@ -53,7 +54,8 @@ void drawParticles(particle *particles)
 	for(int i=1;i<100;i++)
 	{
 //		glColor3f(0.0, 0.0, 1.5*i);
-		glColor4f(.23,.78,.32,0.1);
+		glColor4f(1.0f, 0.0f, 0.0f, 0.5f);
+//		glColor4f(.23,.78,.32,0.1);
 		for(unsigned int j=0;j<particles[i].getSize();j++)
 		{
 			v = particles[i].getPosition(j);
