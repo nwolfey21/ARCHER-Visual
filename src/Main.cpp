@@ -71,7 +71,9 @@ GLUI_Spinner    *light0_spinner, *light1_spinner;
 #define PAUSE		     233
 #define LOAD_OBJ 			 235
 #define LOAD_PARTICLES		 237
-#define DRAW 				 236
+#define DRAWPARTICLES		 236
+#define DRAWOBJS			 238
+#define REMOVEPARTICLES      239
 
 /********** Miscellaneous global variables **********/
 GLfloat light0_ambient[] =  {0.1f, 0.1f, 0.3f, 1.0f};
@@ -87,8 +89,10 @@ GLfloat lights_rotation[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
 
 //-----Approved Variables-----//
 meshOBJ objs[138];
-particle particles[10];
+particle particles[500];
 int loaded = 0;					//0 objects have not been loaded, 1 objects have been loaded
+int objFlag = 0;
+int particleFlag = 0;
 
 /***********************************************************************/
 /*                          control_cb()                               */
@@ -173,7 +177,7 @@ void control_cb( int control )
 		printf("Load particles call back\n");
 		loaded = 1;
 		char particleFilepath[200];
-		for(int i=1;i<10;i++)
+		for(int i=1;i<500;i++)
 		{
 			sprintf(particleFilepath,"data/particles/particle%dPosition.dat",i);
 			std::cout << "loading file: " << particleFilepath << std::endl;
@@ -181,9 +185,24 @@ void control_cb( int control )
 			particles[i].load();
 		}
 	}
-	else if(control == DRAW)
+	else if(control == DRAWPARTICLES)
 	{	
-		printf("Draw call back\n");
+		printf("Draw particles call back\n");
+		particleFlag = 1;
+		glutSetWindow(spatialWindow);
+		spatialDisplay();
+	}
+	else if(control == DRAWOBJS)
+	{	
+		printf("Draw objects call back\n");
+		objFlag = 1;
+		glutSetWindow(spatialWindow);
+		spatialDisplay();
+	}
+	else if(control == REMOVEPARTICLES)
+	{	
+		printf("Remove Particles call back\n");
+		particleFlag = 0;
 		glutSetWindow(spatialWindow);
 		spatialDisplay();
 	}
@@ -310,15 +329,16 @@ void spatialDisplay( void )
 
 	glPushMatrix();
 
-	draw_spatial_axes(.52f);
+//	draw_spatial_axes(.52f);
 
-	if(loaded)
+	if(loaded && objFlag)
 	{
 		drawOBJs(objs);
+	}
+	if(loaded && particleFlag)
+	{
 		drawParticles(particles);
 	}
-
-//	glEnable( GL_LIGHTING );
 
 	glutSwapBuffers(); 
 }
@@ -402,7 +422,9 @@ int main(int argc, char* argv[])
 
 		new GLUI_Button( controlWindow, "Load Objects", LOAD_OBJ, control_cb );
 		new GLUI_Button( controlWindow, "Load particles", LOAD_PARTICLES, control_cb );
-		new GLUI_Button( controlWindow, "Draw Objects", DRAW, control_cb );
+		new GLUI_Button( controlWindow, "Draw Objects", DRAWOBJS, control_cb );
+		new GLUI_Button( controlWindow, "Draw Particles", DRAWPARTICLES, control_cb );
+		new GLUI_Button( controlWindow, "Remove Particles", REMOVEPARTICLES, control_cb );
 
 		/***********************************************************************/
 		/*                     And The Rest....                                */
