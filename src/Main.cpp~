@@ -68,7 +68,7 @@ GLUI_Spinner    *light0_spinner, *light1_spinner;
 #define DISABLE_ID           301
 #define SHOW_ID              302
 #define HIDE_ID              303
-#define PAUSE		     233
+#define PAUSE		     	 233
 #define LOAD_OBJ 			 235
 #define LOAD_PARTICLES		 237
 #define DRAWPARTICLES		 236
@@ -103,28 +103,43 @@ void control_cb( int control )
 	printf("control_cb \n");
 	if ( control == LIGHT0_ENABLED_ID ) 
 	{
+		printf("light0_enabled\n");
 		if ( light0_enabled ) 
 		{
+			printf("enable\n");
+			glutSetWindow(spatialWindow);
 			glEnable( GL_LIGHT0 );
-			light0_spinner->enable();
+			glLightfv(GL_LIGHT0, GL_AMBIENT, light0_ambient);
+			glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
+			glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
+			spatialDisplay();
 		}
 		else 
 		{
-			glDisable( GL_LIGHT0 ); 
-			light0_spinner->disable();
+			printf("disable\n");
+			glutSetWindow(spatialWindow);
+			glDisable( GL_LIGHT0 );
+			spatialDisplay();
 		}
 	}
 	else if ( control == LIGHT1_ENABLED_ID ) 
 	{
 		if ( light1_enabled ) 
 		{
+			printf("enable\n");
+			glutSetWindow(spatialWindow);
 			glEnable( GL_LIGHT1 );
-			light1_spinner->enable();
+			glLightfv(GL_LIGHT1, GL_AMBIENT, light1_ambient);
+			glLightfv(GL_LIGHT1, GL_DIFFUSE, light1_diffuse);
+			glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
+			spatialDisplay();
 		}
 		else 
 		{
-			glDisable( GL_LIGHT1 ); 
-			light1_spinner->disable();
+			printf("disable\n");
+			glutSetWindow(spatialWindow);
+			glDisable( GL_LIGHT1 );
+			spatialDisplay();
 		}
 	}
 	else if ( control == LIGHT0_INTENSITY_ID ) 
@@ -329,7 +344,7 @@ void spatialDisplay( void )
 
 	glPushMatrix();
 
-	draw_spatial_axes(.52f);
+//	draw_spatial_axes(.52f);
 
 	if(loaded && objFlag)
 	{
@@ -347,9 +362,6 @@ void spatialDisplay( void )
 /**********************************************************************************/
 int main(int argc, char* argv[])
 {
-	int i;
-	for(i = 1; i < argc; ++i) 
-	{
 		/***********************************************************************/
 		/*                 Initialize GLUT and Create Windows                  */
 		/***********************************************************************/
@@ -425,6 +437,8 @@ int main(int argc, char* argv[])
 		new GLUI_Button( controlWindow, "Draw Objects", DRAWOBJS, control_cb );
 		new GLUI_Button( controlWindow, "Draw Particles", DRAWPARTICLES, control_cb );
 		new GLUI_Button( controlWindow, "Remove Particles", REMOVEPARTICLES, control_cb );
+		new GLUI_Checkbox( controlWindow, "Light 0",&light0_enabled,LIGHT0_ENABLED_ID,control_cb);
+		new GLUI_Checkbox( controlWindow, "Light 1",&light1_enabled,LIGHT1_ENABLED_ID,control_cb);
 
 		/***********************************************************************/
 		/*                     And The Rest....                                */
@@ -432,6 +446,4 @@ int main(int argc, char* argv[])
 
 		glutMainLoop();
 		return EXIT_SUCCESS;
-		break;
-	}
 }
