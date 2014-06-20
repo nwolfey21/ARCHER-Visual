@@ -23,9 +23,7 @@ void drawOBJs(meshOBJ *obj)
 	{
 		if(obj[i].isValidated())
 		{
-//			glColor3f(0.0, 0.0, 1.5*i);
 			glColor4f(0.0f, 0.0f, 1.0f, 0.5f);
-//			glColor4f(.8,.78,.32,0.1);
 			for(unsigned int j=0;j<obj[i].getSize();j++)
 			{
 				normal = obj[i].getNormals(j);

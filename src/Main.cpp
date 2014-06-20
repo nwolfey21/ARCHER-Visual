@@ -42,6 +42,7 @@ float rotationX = 0.0, rotationY = 0.0;
 /** These are the live variables passed into GLUI ***/
 int   light0_enabled = 1;
 int   light1_enabled = 1;
+int   light2_enabled = 1;
 float light0_intensity = 0.4;
 float light0_intensity2 = 1.4;
 float light1_intensity = .4;
@@ -63,6 +64,7 @@ GLUI_Spinner    *light0_spinner, *light1_spinner;
 /********** User IDs for callbacks ********/
 #define LIGHT0_ENABLED_ID    200
 #define LIGHT1_ENABLED_ID    201
+#define LIGHT2_ENABLED_ID    202
 #define LIGHT0_INTENSITY_ID  250
 #define LIGHT0_INTENSITY2_ID 251
 #define LIGHT1_INTENSITY_ID  260
@@ -85,6 +87,8 @@ GLfloat light0_position[] = {.5f, .5f, 1.0f, 0.0f};
 GLfloat light1_ambient[] =  {0.1f, 0.1f, 0.3f, 1.0f};
 GLfloat light1_diffuse[] =  {.9f, .6f, 0.0f, 1.0f};
 GLfloat light1_position[] = {-1.0f, -1.0f, 1.0f, 0.0f};
+
+GLfloat light2_position[] = {-0.5f, -0.5f, 1.0f, 0.0f};
 
 GLfloat lights_rotation[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
 
@@ -141,6 +145,27 @@ void control_cb( int control )
 			printf("disable\n");
 			glutSetWindow(spatialWindow);
 			glDisable( GL_LIGHT1 );
+			spatialDisplay();
+		}
+	}
+	if ( control == LIGHT2_ENABLED_ID ) 
+	{
+		printf("light0_enabled\n");
+		if ( light0_enabled ) 
+		{
+			printf("enable\n");
+			glutSetWindow(spatialWindow);
+			glEnable( GL_LIGHT2 );
+			glLightfv(GL_LIGHT2, GL_AMBIENT, light0_ambient);
+			glLightfv(GL_LIGHT2, GL_DIFFUSE, light0_diffuse);
+			glLightfv(GL_LIGHT2, GL_POSITION, light2_position);
+			spatialDisplay();
+		}
+		else 
+		{
+			printf("disable\n");
+			glutSetWindow(spatialWindow);
+			glDisable( GL_LIGHT2 );
 			spatialDisplay();
 		}
 	}
@@ -350,6 +375,7 @@ void spatialDisplay( void )
 	glLoadIdentity();
 	glMultMatrixf( lights_rotation );
 	glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
+	glLightfv(GL_LIGHT2, GL_POSITION, light2_position);
 
 	glLoadIdentity();
 	glTranslatef( 0.0, -0.8f, -2.6f );
@@ -435,6 +461,11 @@ int main(int argc, char* argv[])
 		glLightfv(GL_LIGHT1, GL_DIFFUSE, light1_diffuse);
 		glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
 
+		glEnable(GL_LIGHT2);
+		glLightfv(GL_LIGHT2, GL_AMBIENT, light0_ambient);
+		glLightfv(GL_LIGHT2, GL_DIFFUSE, light0_diffuse);
+		glLightfv(GL_LIGHT2, GL_POSITION, light2_position);
+
 		/***** Setup OpenGL Material Color *****/
 		glColorMaterial(GL_FRONT_AND_BACK, GL_EMISSION);
 		glEnable(GL_COLOR_MATERIAL);
@@ -444,7 +475,7 @@ int main(int argc, char* argv[])
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		/***** Enable z-buferring *****/
-		glEnable(GL_DEPTH_TEST);
+//		glEnable(GL_DEPTH_TEST);
 
 
 		/***********************************************************************/
@@ -459,6 +490,7 @@ int main(int argc, char* argv[])
 		new GLUI_Button( controlWindow, "Remove Particles", REMOVEPARTICLES, control_cb );
 		new GLUI_Checkbox( controlWindow, "Light 0",&light0_enabled,LIGHT0_ENABLED_ID,control_cb);
 		new GLUI_Checkbox( controlWindow, "Light 1",&light1_enabled,LIGHT1_ENABLED_ID,control_cb);
+		new GLUI_Checkbox( controlWindow, "Light 2",&light2_enabled,LIGHT2_ENABLED_ID,control_cb);
 		new GLUI_Button( controlWindow, "Decrease Intensity 0", LIGHT0_INTENSITY_ID, control_cb );
 		new GLUI_Button( controlWindow, "Increase Intensity 0", LIGHT0_INTENSITY2_ID, control_cb );
 
