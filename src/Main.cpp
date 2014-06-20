@@ -21,6 +21,7 @@ Currently: 04/19/2014
 #include <time.h>
 #include <string.h>
 #include <complex.h>
+#include <fstream>
 #include "classes.h"
 /* OpenGL Code Headers */
 #include <GL/glui.h>
@@ -28,18 +29,23 @@ Currently: 04/19/2014
 /*************External Functions***************/
 // Updated
 float drawSpatial(int N, int flag);
-void drawOBJs(meshOBJ *obj);
+void drawOBJs(meshOBJ *obj, float *colorTable, int colored);
 void drawParticles(particle *particles); 
 
 /*************Internal Functions***************/
 void spatialReshape( int x, int y );
 void spatialDisplay( void );
+void loadColorTable();
 
 float xy_aspect;
 int   last_x, last_y;
 float rotationX = 0.0, rotationY = 0.0;
 
 /** These are the live variables passed into GLUI ***/
+int   xray_view_enabled = 0;
+int   model_view_enabled = 0;
+int   std_view_enabled = 1;
+int   colored_view_enabled = 0;
 int   light0_enabled = 1;
 int   light1_enabled = 1;
 int   light2_enabled = 1;
@@ -78,6 +84,10 @@ GLUI_Spinner    *light0_spinner, *light1_spinner;
 #define DRAWPARTICLES		 236
 #define DRAWOBJS			 238
 #define REMOVEPARTICLES      239
+#define XRAY_VIEW			 305
+#define MODEL_VIEW			 306
+#define STD_VIEW			 307
+#define COLORED_VIEW		 308
 
 /********** Miscellaneous global variables **********/
 GLfloat light0_ambient[] =  {0.1f, 0.1f, 0.3f, 1.0f};
@@ -99,6 +109,7 @@ particle particles[500];
 int loaded = 0;					//0 objects have not been loaded, 1 objects have been loaded
 int objFlag = 0;
 int particleFlag = 0;
+float colorTable[303];
 
 /***********************************************************************/
 /*                          control_cb()                               */
@@ -107,6 +118,72 @@ int particleFlag = 0;
 void control_cb( int control )
 {
 	printf("control_cb \n");
+	if ( control == XRAY_VIEW ) 
+	{
+		glutSetWindow(spatialWindow);
+		glDisable(GL_DEPTH_TEST);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_COLOR);
+			glDisable( GL_LIGHT0 );
+			glDisable( GL_LIGHT1 );
+			glDisable( GL_LIGHT2 );
+		light0_enabled = 0;
+		light1_enabled = 0;
+		light2_enabled = 0;
+		model_view_enabled = 0;
+		std_view_enabled = 0;
+		controlWindow->sync_live();
+		spatialDisplay();
+	}
+	if ( control == MODEL_VIEW ) 
+	{
+		glutSetWindow(spatialWindow);
+		glDisable(GL_DEPTH_TEST);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_COLOR);
+		glEnable(GL_DEPTH_TEST);
+			glEnable( GL_LIGHT0 );
+			glLightfv(GL_LIGHT0, GL_AMBIENT, light0_ambient);
+			glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
+			glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
+			glDisable( GL_LIGHT1 );
+			glDisable( GL_LIGHT2 );
+		light0_enabled = 1;
+		light1_enabled = 0;
+		light2_enabled = 0;
+		xray_view_enabled = 0;
+		std_view_enabled = 0;
+		controlWindow->sync_live();
+		spatialDisplay();
+	}
+	if ( control == STD_VIEW ) 
+	{
+		glutSetWindow(spatialWindow);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glEnable(GL_DEPTH_TEST);
+			glEnable( GL_LIGHT0 );
+			glLightfv(GL_LIGHT0, GL_AMBIENT, light0_ambient);
+			glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
+			glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
+			glEnable( GL_LIGHT1 );
+			glLightfv(GL_LIGHT1, GL_AMBIENT, light1_ambient);
+			glLightfv(GL_LIGHT1, GL_DIFFUSE, light1_diffuse);
+			glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
+			glEnable( GL_LIGHT2 );
+			glLightfv(GL_LIGHT2, GL_AMBIENT, light0_ambient);
+			glLightfv(GL_LIGHT2, GL_DIFFUSE, light0_diffuse);
+			glLightfv(GL_LIGHT2, GL_POSITION, light2_position);
+		light0_enabled = 1;
+		light1_enabled = 1;
+		light2_enabled = 1;
+		xray_view_enabled = 0;
+		model_view_enabled = 0;
+		controlWindow->sync_live();
+		spatialDisplay();
+	}
+	if( control == COLORED_VIEW )
+	{
+		glutSetWindow(spatialWindow);
+		spatialDisplay();
+	}
 	if ( control == LIGHT0_ENABLED_ID ) 
 	{
 		printf("light0_enabled\n");
@@ -227,6 +304,7 @@ void control_cb( int control )
 			objs[i].setPath(filepath);
 			objs[i].load();
 		}
+		loadColorTable();
 	}
 	else if(control == LOAD_PARTICLES)
 	{
@@ -264,6 +342,16 @@ void control_cb( int control )
 	}
 }
 
+void loadColorTable()
+{
+	std::ifstream infile;
+	infile.open("data/colorTable.txt", std::ios::in);
+	for(int i=0;i<100;i++)
+	{
+		infile >> colorTable[i*3] >> colorTable[i*3+1] >> colorTable[i*3+2];
+		printf("colortable[%d]:%f colortable[%d]:%f colortable[%d]:%f\n",i*3, colorTable[i*3], i*3+1, colorTable[i*3+1], i*3+2, colorTable[i*3+2]);
+	}
+}
 
 /***********************************************************************/
 /*                         myGlutKeyboard()                            */
@@ -390,7 +478,7 @@ void spatialDisplay( void )
 
 	if(loaded && objFlag)
 	{
-		drawOBJs(objs);
+		drawOBJs(objs,colorTable,colored_view_enabled);
 	}
 	if(loaded && particleFlag)
 	{
@@ -475,7 +563,7 @@ int main(int argc, char* argv[])
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		/***** Enable z-buferring *****/
-//		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_DEPTH_TEST);
 
 
 		/***********************************************************************/
@@ -491,6 +579,10 @@ int main(int argc, char* argv[])
 		new GLUI_Checkbox( controlWindow, "Light 0",&light0_enabled,LIGHT0_ENABLED_ID,control_cb);
 		new GLUI_Checkbox( controlWindow, "Light 1",&light1_enabled,LIGHT1_ENABLED_ID,control_cb);
 		new GLUI_Checkbox( controlWindow, "Light 2",&light2_enabled,LIGHT2_ENABLED_ID,control_cb);
+		new GLUI_Checkbox( controlWindow, "Standard View",&std_view_enabled,STD_VIEW,control_cb);
+		new GLUI_Checkbox( controlWindow, "XRAY View",&xray_view_enabled,XRAY_VIEW,control_cb);
+		new GLUI_Checkbox( controlWindow, "Model View",&model_view_enabled,MODEL_VIEW,control_cb);
+		new GLUI_Checkbox( controlWindow, "Colored Model",&colored_view_enabled,COLORED_VIEW,control_cb);
 		new GLUI_Button( controlWindow, "Decrease Intensity 0", LIGHT0_INTENSITY_ID, control_cb );
 		new GLUI_Button( controlWindow, "Increase Intensity 0", LIGHT0_INTENSITY2_ID, control_cb );
 

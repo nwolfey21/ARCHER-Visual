@@ -9,7 +9,7 @@ Discription:
 /* OpenGL Code Headers */
 #include <GL/glui.h>
 
-void drawOBJs(meshOBJ *obj)
+void drawOBJs(meshOBJ *obj, float *colorTable, int colored)
 {
 	printf("drawing Objects\n");
 	glPushMatrix(); // GL_MODELVIEW is default
@@ -23,7 +23,15 @@ void drawOBJs(meshOBJ *obj)
 	{
 		if(obj[i].isValidated())
 		{
-			glColor4f(0.0f, 0.0f, 1.0f, 0.5f);
+			if(colored)
+			{
+				glColor4f(colorTable[i%100*3]/255,colorTable[i%100*3+1]/255,colorTable[i%100*3+2]/255,0.3f);	
+			}
+			else
+			{
+				glColor4f(0.0f, 0.0f, 1.0f, 0.2f);
+			}
+
 			for(unsigned int j=0;j<obj[i].getSize();j++)
 			{
 				normal = obj[i].getNormals(j);
