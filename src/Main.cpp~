@@ -29,12 +29,15 @@ Currently: 04/19/2014
 /*************External Functions***************/
 // Updated
 float drawSpatial(int N, int flag);
-void drawOBJs(meshOBJ *obj, float *colorTable);
+void drawOBJs(meshOBJ *obj, float *colorTable, int colored);
 void drawParticles(particle *particles); 
+void drawOffice(meshOBJ *obj);
+void animate(particle *particles, int *iter);
 
 /*************Internal Functions***************/
 void spatialReshape( int x, int y );
 void spatialDisplay( void );
+void animationSpatialDisplay( void );
 void loadColorTable();
 
 float xy_aspect;
@@ -81,9 +84,12 @@ GLUI_Spinner    *light0_spinner, *light1_spinner;
 #define PAUSE		     	 233
 #define LOAD_OBJ 			 235
 #define LOAD_PARTICLES		 237
-#define DRAWPARTICLES		 236
-#define DRAWOBJS			 238
-#define REMOVEPARTICLES      239
+#define LOAD_OFFICE			 240
+#define DRAW_PARTICLES		 236
+#define DRAW_OBJS			 238
+#define DRAW_OFFICE			 241
+#define ANIMATE				 242
+#define REMOVE_PARTICLES     239
 #define XRAY_VIEW			 305
 #define MODEL_VIEW			 306
 #define STD_VIEW			 307
@@ -105,10 +111,16 @@ GLfloat lights_rotation[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
 
 //-----Approved Variables-----//
 meshOBJ objs[138];
+meshOBJ office[1];
 particle particles[500];
-int loaded = 0;					//0 objects have not been loaded, 1 objects have been loaded
+int loadedOBJ = 0;					//0 objects have not been loaded, 1 objects have been loaded
+int loadedParticles = 0;
+int loadedOffice = 0;
 int objFlag = 0;
 int particleFlag = 0;
+int officeFlag = 0;
+int animateFlag = 0;
+int animationIteration = 0;
 float colorTable[303];
 
 /***********************************************************************/
@@ -295,11 +307,12 @@ void control_cb( int control )
 	else if(control == LOAD_OBJ)
 	{
 		printf("Load objects call back\n");
-		loaded = 1;
+		loadedOBJ = 1;
 		char filepath[200];
 		for(int i=0;i<138;i++)
 		{
 			sprintf(filepath,"data/73_adult_male/073kg/%03d.obj",i+1);
+//			sprintf(filepath,"data/misc/%03d.obj",i+1);
 			std::cout << "loading file: " << filepath << std::endl;
 			objs[i].setPath(filepath);
 			objs[i].load();
@@ -309,7 +322,7 @@ void control_cb( int control )
 	else if(control == LOAD_PARTICLES)
 	{
 		printf("Load particles call back\n");
-		loaded = 1;
+		loadedParticles = 1;
 		char particleFilepath[200];
 		for(int i=1;i<500;i++)
 		{
@@ -319,26 +332,56 @@ void control_cb( int control )
 			particles[i].load();
 		}
 	}
-	else if(control == DRAWPARTICLES)
+	else if(control == LOAD_OFFICE)
+	{
+		printf("Load office call back\n");
+		loadedOffice = 1;
+		char officeFilepath[200] = "data/misc/office.obj";
+		std::cout << "loading file: " << officeFilepath << std::endl;
+		office[0].setPath(officeFilepath);
+		office[0].load();
+	}
+	else if(control == DRAW_PARTICLES)
 	{	
 		printf("Draw particles call back\n");
 		particleFlag = 1;
 		glutSetWindow(spatialWindow);
 		spatialDisplay();
 	}
-	else if(control == DRAWOBJS)
+	else if(control == DRAW_OBJS)
 	{	
 		printf("Draw objects call back\n");
 		objFlag = 1;
 		glutSetWindow(spatialWindow);
 		spatialDisplay();
 	}
-	else if(control == REMOVEPARTICLES)
+	else if(control == DRAW_OFFICE)
+	{	
+		printf("Draw office call back\n");
+		officeFlag = 1;
+		glutSetWindow(spatialWindow);
+		spatialDisplay();
+	}
+	else if(control == REMOVE_PARTICLES)
 	{	
 		printf("Remove Particles call back\n");
 		particleFlag = 0;
 		glutSetWindow(spatialWindow);
 		spatialDisplay();
+	}
+	else if(control == ANIMATE)
+	{	
+		printf("Animate call back\n");
+		particleFlag = 0;						//Disable rendering of particles
+		animateFlag = 1;
+		clock_t start, inst;
+		start = clock();
+		animationIteration = 0;
+//		while(animationIteration != -1)
+//		{
+//		}
+		glutSetWindow(spatialWindow);			//Set Window for rendering
+		spatialDisplay();						//begin rendering process
 	}
 }
 
@@ -352,6 +395,36 @@ void loadColorTable()
 		printf("colortable[%d]:%f colortable[%d]:%f colortable[%d]:%f\n",i*3, colorTable[i*3], i*3+1, colorTable[i*3+1], i*3+2, colorTable[i*3+2]);
 	}
 }
+
+/***********************************************************************/
+/*                         Animation Timer                             */
+/***********************************************************************/
+void animationTimer( int value)
+{
+/*	static bool flag = true ;
+	static int count = 5;
+	if ( count == 10 )
+	{
+		flag=false;
+	}
+	if (count == 0)
+	{
+		flag=true;
+	}
+
+	if (flag )
+	{
+		s_line_length += 0.1;
+		count++;
+	}
+	else
+	{
+		s_line_length -= 0.1;
+		count--;
+	}
+	glutPostRedisplay();
+	glutTimerFunc( 200, animationTimer , 0);
+*/}
 
 /***********************************************************************/
 /*                         myGlutKeyboard()                            */
@@ -383,8 +456,17 @@ void myGlutIdle( void )
 {
 	printf("myglutidle \n");
 	if ( glutGetWindow() != spatialWindow ) 
+	{
 		glutSetWindow(spatialWindow);  
-	glutPostRedisplay();
+	}
+	if(animationIteration != -1)
+	{
+		animationSpatialDisplay();						//begin rendering process
+	}
+	else
+	{
+		glutPostRedisplay();
+	}
 }
 /***********************************************************************/
 /*                           myGlutMouse()                             */
@@ -450,7 +532,6 @@ void draw_spatial_axes( float scale )
 /***********************************************************************/
 void spatialDisplay( void )
 {
-	float intensity = 0;
 	printf("spatialDisplay \n");
 	glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -471,125 +552,188 @@ void spatialDisplay( void )
 	glMultMatrixf( view_spatial_rotate );
 
 	glScalef( scale, scale, scale );
-
 	glPushMatrix();
-
-//	draw_spatial_axes(.52f);
-
-	if(loaded && objFlag)
+	if(loadedOBJ && objFlag)
 	{
 		drawOBJs(objs,colorTable,colored_view_enabled);
 	}
-	if(loaded && particleFlag)
+	if(loadedOffice && officeFlag)
+	{
+		drawOffice(office);
+	}
+	if(loadedParticles && animateFlag && animationIteration!=-1)
+	{
+		animate(particles, &animationIteration);
+		if(animationIteration != -1)
+		{
+			animationIteration++;
+		}
+	}
+	if(loadedParticles && particleFlag)
 	{
 		drawParticles(particles);
 	}
-
+	glPopMatrix();	
 	glutSwapBuffers(); 
+}
+/***********************************************************************/
+/*                           spatialDisplay()                          */
+/***********************************************************************/
+void animationSpatialDisplay( void )
+{
+	printf("animationSpatialDisplay \n");
+//	glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
+//	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+	glMatrixMode( GL_PROJECTION );
+
+	glLoadIdentity();
+	glFrustum( -xy_aspect*.04, xy_aspect*.04, -.04, .04, .1, 15.0 );
+	glMatrixMode( GL_MODELVIEW );
+
+	glLoadIdentity();
+	glMultMatrixf( lights_rotation );
+	glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
+	glLightfv(GL_LIGHT2, GL_POSITION, light2_position);
+
+	glLoadIdentity();
+	glTranslatef( 0.0, -0.8f, -2.6f );
+	glTranslatef( spatial_pos[0], spatial_pos[1], -spatial_pos[2] ); 
+	glMultMatrixf( view_spatial_rotate );
+
+	glScalef( scale, scale, scale );
+	glPushMatrix();
+/*	if(loadedOBJ && objFlag)
+	{
+		drawOBJs(objs,colorTable,colored_view_enabled);
+	}
+	if(loadedOffice && officeFlag)
+	{
+		drawOffice(office);
+	}
+*/	if(loadedParticles && animateFlag && animationIteration!=-1)
+	{
+		animate(particles, &animationIteration);
+		printf("animationIteration:%d\n",animationIteration);
+		if(animationIteration != -1)
+		{
+			animationIteration++;
+		}
+	}
+/*	if(loadedParticles && particleFlag)
+	{
+		drawParticles(particles);
+	}
+*/	glPopMatrix();	
+	glutSwapBuffers();
 }
 /**********************************************************************************/
 /*                                    MAIN                                        */
 /**********************************************************************************/
 int main(int argc, char* argv[])
 {
-		/***********************************************************************/
-		/*                 Initialize GLUT and Create Windows                  */
-		/***********************************************************************/
-		glutInit(&argc, argv);
-		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH );
+	/***********************************************************************/
+	/*                 Initialize GLUT and Create Windows                  */
+	/***********************************************************************/
+	glutInit(&argc, argv);
+	glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH );
 
 
-		/***********************************************************************/
-		/*                      Setup Spatial Window                           */
-		/***********************************************************************/
-		/*** Create Window/Setup Callbacks***/
-		glutInitWindowPosition( 0, 25 );		// Top Left
-		glutInitWindowSize( 580, 500 );
-		spatialWindow = glutCreateWindow( "Spatial Intensity" );
+	/***********************************************************************/
+	/*                      Setup Spatial Window                           */
+	/***********************************************************************/
+	/*** Create Window/Setup Callbacks***/
+	glutInitWindowPosition( 0, 25 );		// Top Left
+	glutInitWindowSize( 580, 500 );
+	spatialWindow = glutCreateWindow( "Spatial Intensity" );
 
-		glutDisplayFunc( spatialDisplay );
-		GLUI_Master.set_glutReshapeFunc( spatialReshape );  
-		GLUI_Master.set_glutKeyboardFunc( myGlutKeyboard );
-		GLUI_Master.set_glutSpecialFunc( NULL );
-		GLUI_Master.set_glutMouseFunc( myGlutMouse );
-		glutMotionFunc( myGlutMotion );
-		/*** End Create Window/Setup Callbacks***/
+	glutDisplayFunc( spatialDisplay );		//Set display function
+	GLUI_Master.set_glutReshapeFunc( spatialReshape );  
+	GLUI_Master.set_glutKeyboardFunc( myGlutKeyboard );
+	GLUI_Master.set_glutSpecialFunc( NULL );
+	GLUI_Master.set_glutMouseFunc( myGlutMouse );
+	glutMotionFunc( myGlutMotion );			//Set motion function
+//	glutTimerFunc (1, animationTimer,0);	//Set animation timer function
+	glutIdleFunc(myGlutIdle);			//Set Idle function
+	/*** End Create Window/Setup Callbacks***/
 
-		/*** Add Bottom SubWindow ***/
-		spatialSubWindow = GLUI_Master.create_glui_subwindow( spatialWindow, GLUI_SUBWINDOW_BOTTOM );
-		spatialSubWindow->set_main_gfx_window( spatialWindow );
+	/*** Add Bottom SubWindow ***/
+	spatialSubWindow = GLUI_Master.create_glui_subwindow( spatialWindow, GLUI_SUBWINDOW_BOTTOM );
+	spatialSubWindow->set_main_gfx_window( spatialWindow );
 
-		GLUI_Rotation *view_rot_spatial = new GLUI_Rotation(spatialSubWindow, "Rotate", view_spatial_rotate );
-		view_rot_spatial->set_spin( 1.0 );
-		new GLUI_Column( spatialSubWindow, false );
-		GLUI_Translation *trans_xy_spatial = new GLUI_Translation(spatialSubWindow, "XY", GLUI_TRANSLATION_XY, spatial_pos );
-		trans_xy_spatial->set_speed( .005 );
-		new GLUI_Column( spatialSubWindow, false );
-		GLUI_Translation *trans_x_spatial = new GLUI_Translation(spatialSubWindow, "X", GLUI_TRANSLATION_X, spatial_pos );
-		trans_x_spatial->set_speed( .005 );
-		new GLUI_Column( spatialSubWindow, false );
-		GLUI_Translation *trans_y_spatial = new GLUI_Translation(spatialSubWindow, "Y", GLUI_TRANSLATION_Y, &spatial_pos[1]);
-		trans_y_spatial->set_speed( .005 );
-		new GLUI_Column( spatialSubWindow, false );
-		GLUI_Translation *trans_z_spatial = new GLUI_Translation(spatialSubWindow, "Z", GLUI_TRANSLATION_Z, &spatial_pos[2]);
-		trans_z_spatial->set_speed( .005 );
-		/*** End Bottom SubWindow ***/
+	GLUI_Rotation *view_rot_spatial = new GLUI_Rotation(spatialSubWindow, "Rotate", view_spatial_rotate );
+	view_rot_spatial->set_spin( 1.0 );
+	new GLUI_Column( spatialSubWindow, false );
+	GLUI_Translation *trans_xy_spatial = new GLUI_Translation(spatialSubWindow, "XY", GLUI_TRANSLATION_XY, spatial_pos );
+	trans_xy_spatial->set_speed( .005 );
+	new GLUI_Column( spatialSubWindow, false );
+	GLUI_Translation *trans_x_spatial = new GLUI_Translation(spatialSubWindow, "X", GLUI_TRANSLATION_X, spatial_pos );
+	trans_x_spatial->set_speed( .005 );
+	new GLUI_Column( spatialSubWindow, false );
+	GLUI_Translation *trans_y_spatial = new GLUI_Translation(spatialSubWindow, "Y", GLUI_TRANSLATION_Y, &spatial_pos[1]);
+	trans_y_spatial->set_speed( .005 );
+	new GLUI_Column( spatialSubWindow, false );
+	GLUI_Translation *trans_z_spatial = new GLUI_Translation(spatialSubWindow, "Z", GLUI_TRANSLATION_Z, &spatial_pos[2]);
+	trans_z_spatial->set_speed( .005 );
+	/*** End Bottom SubWindow ***/
 
-		/***** Setup OpenGL lights *****/
-		glEnable(GL_LIGHTING);
-		glEnable( GL_NORMALIZE );
+	/***** Setup OpenGL lights *****/
+	glEnable(GL_LIGHTING);
+	glEnable( GL_NORMALIZE );
 
-		glEnable(GL_LIGHT0);
-		glLightfv(GL_LIGHT0, GL_AMBIENT, light0_ambient);
-		glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
-		glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
+	glEnable(GL_LIGHT0);
+	glLightfv(GL_LIGHT0, GL_AMBIENT, light0_ambient);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
+	glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
 
-		glEnable(GL_LIGHT1);
-		glLightfv(GL_LIGHT1, GL_AMBIENT, light1_ambient);
-		glLightfv(GL_LIGHT1, GL_DIFFUSE, light1_diffuse);
-		glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
+	glEnable(GL_LIGHT1);
+	glLightfv(GL_LIGHT1, GL_AMBIENT, light1_ambient);
+	glLightfv(GL_LIGHT1, GL_DIFFUSE, light1_diffuse);
+	glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
 
-		glEnable(GL_LIGHT2);
-		glLightfv(GL_LIGHT2, GL_AMBIENT, light0_ambient);
-		glLightfv(GL_LIGHT2, GL_DIFFUSE, light0_diffuse);
-		glLightfv(GL_LIGHT2, GL_POSITION, light2_position);
+	glEnable(GL_LIGHT2);
+	glLightfv(GL_LIGHT2, GL_AMBIENT, light0_ambient);
+	glLightfv(GL_LIGHT2, GL_DIFFUSE, light0_diffuse);
+	glLightfv(GL_LIGHT2, GL_POSITION, light2_position);
 
-		/***** Setup OpenGL Material Color *****/
-		glColorMaterial(GL_FRONT_AND_BACK, GL_EMISSION);
-		glEnable(GL_COLOR_MATERIAL);
+	/***** Setup OpenGL Material Color *****/
+	glColorMaterial(GL_FRONT_AND_BACK, GL_EMISSION);
+	glEnable(GL_COLOR_MATERIAL);
 
-		/***** Setup OpenGL Transparency *****/
-    	glEnable( GL_BLEND );
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	/***** Setup OpenGL Transparency *****/
+	glEnable( GL_BLEND );
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-		/***** Enable z-buferring *****/
-		glEnable(GL_DEPTH_TEST);
+	/***** Enable z-buferring *****/
+	glEnable(GL_DEPTH_TEST);
 
 
-		/***********************************************************************/
-		/*                      Create Control Window                          */
-		/***********************************************************************/
-		controlWindow = GLUI_Master.create_glui( "Configuration", 0, 600/*2500*/, 25 );
+	/***********************************************************************/
+	/*                      Create Control Window                          */
+	/***********************************************************************/
+	controlWindow = GLUI_Master.create_glui( "Configuration", 0, 600/*2500*/, 25 );
 
-		new GLUI_Button( controlWindow, "Load Objects", LOAD_OBJ, control_cb );
-		new GLUI_Button( controlWindow, "Load particles", LOAD_PARTICLES, control_cb );
-		new GLUI_Button( controlWindow, "Draw Objects", DRAWOBJS, control_cb );
-		new GLUI_Button( controlWindow, "Draw Particles", DRAWPARTICLES, control_cb );
-		new GLUI_Button( controlWindow, "Remove Particles", REMOVEPARTICLES, control_cb );
-		new GLUI_Checkbox( controlWindow, "Light 0",&light0_enabled,LIGHT0_ENABLED_ID,control_cb);
-		new GLUI_Checkbox( controlWindow, "Light 1",&light1_enabled,LIGHT1_ENABLED_ID,control_cb);
-		new GLUI_Checkbox( controlWindow, "Light 2",&light2_enabled,LIGHT2_ENABLED_ID,control_cb);
-		new GLUI_Checkbox( controlWindow, "Standard View",&std_view_enabled,STD_VIEW,control_cb);
-		new GLUI_Checkbox( controlWindow, "XRAY View",&xray_view_enabled,XRAY_VIEW,control_cb);
-		new GLUI_Checkbox( controlWindow, "Model View",&model_view_enabled,MODEL_VIEW,control_cb);
-		new GLUI_Checkbox( controlWindow, "Colored Model",&colored_view_enabled,COLORED_VIEW,control_cb);
-		new GLUI_Button( controlWindow, "Decrease Intensity 0", LIGHT0_INTENSITY_ID, control_cb );
-		new GLUI_Button( controlWindow, "Increase Intensity 0", LIGHT0_INTENSITY2_ID, control_cb );
+	new GLUI_Button( controlWindow, "Load Objects", LOAD_OBJ, control_cb );
+	new GLUI_Button( controlWindow, "Load Particles", LOAD_PARTICLES, control_cb );
+	new GLUI_Button( controlWindow, "Load Office", LOAD_OFFICE, control_cb );
+	new GLUI_Button( controlWindow, "Draw Objects", DRAW_OBJS, control_cb );
+	new GLUI_Button( controlWindow, "Draw Particles", DRAW_PARTICLES, control_cb );
+	new GLUI_Button( controlWindow, "Draw Office", DRAW_OFFICE, control_cb );
+	new GLUI_Button( controlWindow, "Remove Particles", REMOVE_PARTICLES, control_cb );
+	new GLUI_Button( controlWindow, "Animate", ANIMATE, control_cb );
+	new GLUI_Checkbox( controlWindow, "Light 0",&light0_enabled,LIGHT0_ENABLED_ID,control_cb);
+	new GLUI_Checkbox( controlWindow, "Light 1",&light1_enabled,LIGHT1_ENABLED_ID,control_cb);
+	new GLUI_Checkbox( controlWindow, "Light 2",&light2_enabled,LIGHT2_ENABLED_ID,control_cb);
+	new GLUI_Checkbox( controlWindow, "Standard View",&std_view_enabled,STD_VIEW,control_cb);
+	new GLUI_Checkbox( controlWindow, "XRAY View",&xray_view_enabled,XRAY_VIEW,control_cb);
+	new GLUI_Checkbox( controlWindow, "Model View",&model_view_enabled,MODEL_VIEW,control_cb);
+	new GLUI_Checkbox( controlWindow, "Colored Model",&colored_view_enabled,COLORED_VIEW,control_cb);
+	new GLUI_Button( controlWindow, "Decrease Intensity 0", LIGHT0_INTENSITY_ID, control_cb );
+	new GLUI_Button( controlWindow, "Increase Intensity 0", LIGHT0_INTENSITY2_ID, control_cb );
 
-		/***********************************************************************/
-		/*                     And The Rest....                                */
-		/***********************************************************************/
+	/***********************************************************************/
+	/*                     And The Rest....                                */
+	/***********************************************************************/
 
-		glutMainLoop();
-		return EXIT_SUCCESS;
+	glutMainLoop();
+	return EXIT_SUCCESS;
 }
