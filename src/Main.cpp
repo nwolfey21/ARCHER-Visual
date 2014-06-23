@@ -58,17 +58,11 @@ float light1_intensity = .4;
 int   spatialWindow;
 float scale = 1.0;
 int   show_spatial=0;
-float spatial_rotate[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
 float view_spatial_rotate[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
 float spatial_pos[] = { 0.0, 0.0, 0.0 };
-float sphere_rotate[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
-float torus_rotate[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
-float view_rotate[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
-float obj_pos[] = { 0.0, 0.0, 0.0 };
 
 /** Pointers to the windows and some of the controls we'll create **/
 GLUI            *spatialSubWindow,*controlWindow,*spatialBottomSubWIndow;
-GLUI_Spinner    *light0_spinner, *light1_spinner;
 
 /********** User IDs for callbacks ********/
 #define LIGHT0_ENABLED_ID    200
@@ -99,15 +93,11 @@ GLUI_Spinner    *light0_spinner, *light1_spinner;
 GLfloat light0_ambient[] =  {0.1f, 0.1f, 0.3f, 1.0f};
 GLfloat light0_diffuse[] =  {.6f, .6f, 1.0f, 1.0f};
 GLfloat light0_position[] = {.5f, .5f, 1.0f, 0.0f};
-
 GLfloat light1_ambient[] =  {0.1f, 0.1f, 0.3f, 1.0f};
 GLfloat light1_diffuse[] =  {.9f, .6f, 0.0f, 1.0f};
 GLfloat light1_position[] = {-1.0f, -1.0f, 1.0f, 0.0f};
-
 GLfloat light2_position[] = {-0.5f, -0.5f, 1.0f, 0.0f};
-
 GLfloat lights_rotation[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
-
 
 //-----Approved Variables-----//
 const int numParticles = 100;
@@ -539,13 +529,11 @@ void spatialDisplay( void )
 	glutSwapBuffers(); 
 }
 /***********************************************************************/
-/*                           spatialDisplay()                          */
+/*                  animationSpatialDisplay()                          */
 /***********************************************************************/
 void animationSpatialDisplay( void )
 {
 	printf("animationSpatialDisplay \n");
-//	glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
-//	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 	glMatrixMode( GL_PROJECTION );
 
 	glLoadIdentity();
@@ -564,24 +552,12 @@ void animationSpatialDisplay( void )
 
 	glScalef( scale, scale, scale );
 	glPushMatrix();
-/*	if(loadedOBJ && objFlag)
-	{
-		drawOBJs(objs,colorTable,colored_view_enabled);
-	}
-	if(loadedOffice && officeFlag)
-	{
-		drawOffice(office);
-	}
-*/	if(loadedParticles && animateFlag && animationIteration[numParticles]!=numParticles-1)
+	if(loadedParticles && animateFlag && animationIteration[numParticles]!=numParticles-1)
 	{
 		animate(particles, animationIteration, numParticles);
 		printf("animationIteration:%d\n",animationIteration[numParticles]);
 	}
-/*	if(loadedParticles && particleFlag)
-	{
-		drawParticles(particles);
-	}
-*/	glPopMatrix();	
+	glPopMatrix();	
 	glutSwapBuffers();
 }
 /**********************************************************************************/
