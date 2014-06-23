@@ -30,9 +30,9 @@ Currently: 04/19/2014
 // Updated
 float drawSpatial(int N, int flag);
 void drawOBJs(meshOBJ *obj, float *colorTable, int colored);
-void drawParticles(particle *particles); 
+void drawParticles(particle *particles, int numParticles); 
 void drawOffice(meshOBJ *obj);
-void animate(particle *particles, int *iter);
+void animate(particle *particles, int *iter, int numParticles);
 
 /*************Internal Functions***************/
 void spatialReshape( int x, int y );
@@ -110,9 +110,10 @@ GLfloat lights_rotation[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
 
 
 //-----Approved Variables-----//
+const int numParticles = 100;
 meshOBJ objs[138];
 meshOBJ office[1];
-particle particles[500];
+particle particles[numParticles];
 int loadedOBJ = 0;					//0 objects have not been loaded, 1 objects have been loaded
 int loadedParticles = 0;
 int loadedOffice = 0;
@@ -120,7 +121,7 @@ int objFlag = 0;
 int particleFlag = 0;
 int officeFlag = 0;
 int animateFlag = 0;
-int animationIteration = 0;
+int *animationIteration = (int*) calloc (numParticles+1,sizeof(int));
 float colorTable[303];
 
 /***********************************************************************/
@@ -135,9 +136,9 @@ void control_cb( int control )
 		glutSetWindow(spatialWindow);
 		glDisable(GL_DEPTH_TEST);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_COLOR);
-			glDisable( GL_LIGHT0 );
-			glDisable( GL_LIGHT1 );
-			glDisable( GL_LIGHT2 );
+		glDisable( GL_LIGHT0 );
+		glDisable( GL_LIGHT1 );
+		glDisable( GL_LIGHT2 );
 		light0_enabled = 0;
 		light1_enabled = 0;
 		light2_enabled = 0;
@@ -324,7 +325,7 @@ void control_cb( int control )
 		printf("Load particles call back\n");
 		loadedParticles = 1;
 		char particleFilepath[200];
-		for(int i=1;i<500;i++)
+		for(int i=1;i<numParticles;i++)
 		{
 			sprintf(particleFilepath,"data/particles/particle%dPosition.dat",i);
 			std::cout << "loading file: " << particleFilepath << std::endl;
@@ -374,12 +375,7 @@ void control_cb( int control )
 		printf("Animate call back\n");
 		particleFlag = 0;						//Disable rendering of particles
 		animateFlag = 1;
-		clock_t start, inst;
-		start = clock();
-		animationIteration = 0;
-//		while(animationIteration != -1)
-//		{
-//		}
+		animationIteration = (int*) calloc (numParticles+1,sizeof(int));
 		glutSetWindow(spatialWindow);			//Set Window for rendering
 		spatialDisplay();						//begin rendering process
 	}
@@ -388,43 +384,13 @@ void control_cb( int control )
 void loadColorTable()
 {
 	std::ifstream infile;
-	infile.open("data/colorTable.txt", std::ios::in);
+	infile.open("data/misc/colorTable.txt", std::ios::in);
 	for(int i=0;i<100;i++)
 	{
 		infile >> colorTable[i*3] >> colorTable[i*3+1] >> colorTable[i*3+2];
 		printf("colortable[%d]:%f colortable[%d]:%f colortable[%d]:%f\n",i*3, colorTable[i*3], i*3+1, colorTable[i*3+1], i*3+2, colorTable[i*3+2]);
 	}
 }
-
-/***********************************************************************/
-/*                         Animation Timer                             */
-/***********************************************************************/
-void animationTimer( int value)
-{
-/*	static bool flag = true ;
-	static int count = 5;
-	if ( count == 10 )
-	{
-		flag=false;
-	}
-	if (count == 0)
-	{
-		flag=true;
-	}
-
-	if (flag )
-	{
-		s_line_length += 0.1;
-		count++;
-	}
-	else
-	{
-		s_line_length -= 0.1;
-		count--;
-	}
-	glutPostRedisplay();
-	glutTimerFunc( 200, animationTimer , 0);
-*/}
 
 /***********************************************************************/
 /*                         myGlutKeyboard()                            */
@@ -459,7 +425,7 @@ void myGlutIdle( void )
 	{
 		glutSetWindow(spatialWindow);  
 	}
-	if(animationIteration != -1)
+	if(animationIteration[numParticles] != numParticles-1)
 	{
 		animationSpatialDisplay();						//begin rendering process
 	}
@@ -561,17 +527,13 @@ void spatialDisplay( void )
 	{
 		drawOffice(office);
 	}
-	if(loadedParticles && animateFlag && animationIteration!=-1)
+	if(loadedParticles && animateFlag && animationIteration[numParticles]!=numParticles-1)
 	{
-		animate(particles, &animationIteration);
-		if(animationIteration != -1)
-		{
-			animationIteration++;
-		}
+		animate(particles, animationIteration, numParticles);
 	}
 	if(loadedParticles && particleFlag)
 	{
-		drawParticles(particles);
+		drawParticles(particles, numParticles);
 	}
 	glPopMatrix();	
 	glutSwapBuffers(); 
@@ -610,14 +572,10 @@ void animationSpatialDisplay( void )
 	{
 		drawOffice(office);
 	}
-*/	if(loadedParticles && animateFlag && animationIteration!=-1)
+*/	if(loadedParticles && animateFlag && animationIteration[numParticles]!=numParticles-1)
 	{
-		animate(particles, &animationIteration);
-		printf("animationIteration:%d\n",animationIteration);
-		if(animationIteration != -1)
-		{
-			animationIteration++;
-		}
+		animate(particles, animationIteration, numParticles);
+		printf("animationIteration:%d\n",animationIteration[numParticles]);
 	}
 /*	if(loadedParticles && particleFlag)
 	{

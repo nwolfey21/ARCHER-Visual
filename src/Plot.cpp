@@ -48,7 +48,7 @@ void drawOBJs(meshOBJ *obj, float *colorTable, int colored)
 	glPopMatrix();
 }
 
-void drawParticles(particle *particles)
+void drawParticles(particle *particles, int numParticles)
 {
 	printf("drawing Particles\n");
 	glPushMatrix(); // GL_MODELVIEW is default
@@ -56,7 +56,7 @@ void drawParticles(particle *particles)
 
 	vertex v;
 
-	for(int i=1;i<100;i++)
+	for(int i=1;i<numParticles;i++)
 	{
 		glColor4f(1.0f, 0.0f, 0.0f, 0.5f);
 		for(unsigned int j=0;j<particles[i].getSize();j++)
@@ -98,27 +98,34 @@ void drawOffice(meshOBJ *obj)
 	glPopMatrix();
 }
 
-void animate(particle *particles, int *iter)
+void animate(particle *particles, int *iter, int numParticles)
 {
 	printf("animating\n");
 	glPushMatrix(); // GL_MODELVIEW is default
 	glScalef(1.0 / 100.0, 1.0 / 100.0, 1.0/100.0);
 	vertex v;
-	for(int i=2;i<3;i++)
+	for(int i=1;i<100;i++)
 	{
 		glColor4f(1.0f, 0.0f, 0.0f, 0.5f);
-		if((unsigned int)*iter < particles[i].getSize())
+		if(iter[i] != -1)
 		{
-			v = particles[i].getPosition(*iter);
-			glPushMatrix(); // GL_MODELVIEW is default
-			glTranslatef(v.getX(),v.getZ(),v.getY());
-			glutSolidSphere (0.5, 20, 16);
-			glPopMatrix();
-			iter++;
-		}
-		else
-		{
-			*iter = -1;
+			if((unsigned int)iter[i] < particles[i].getSize())
+			{
+				for(int j=0;j<iter[i];j++)
+				{
+					v = particles[i].getPosition(j);
+					glPushMatrix(); // GL_MODELVIEW is default
+					glTranslatef(v.getX(),v.getZ(),v.getY());
+					glutSolidSphere (0.5, 20, 16);
+					glPopMatrix();
+				}
+				iter[i]++;
+			}
+			else
+			{
+				iter[i] = -1;
+				iter[numParticles]++;
+			}
 		}
 	}
 	glPopMatrix();
