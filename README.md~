@@ -13,4 +13,4 @@ What it Does:
 - loads and plots saved particle paths
 - animates particle paths
 - provides basic, xray and model phantom views
-- can display CT emitter radial paths
+- can display CT emitter radial trajectories

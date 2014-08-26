@@ -79,6 +79,7 @@ void drawOffice(meshOBJ *obj)
 	vertex* normal;
 	vertex* vertex;
 	glBegin(GL_TRIANGLES); 
+	glColor4f(1.0f, 1.0f, 1.0f, 0.5f);
 	for(int i=0;i<1;i++)
 	{
 		for(unsigned int j=0;j<obj[i].getSize();j++)
@@ -95,6 +96,26 @@ void drawOffice(meshOBJ *obj)
 		}
 	}
 	glEnd();
+	glPopMatrix();
+}
+
+void drawAxis(int nAxis)
+{
+	printf("drawing Axis\n");
+	glPushMatrix(); // GL_MODELVIEW is default
+	glScalef(1.0 / 100.0, 1.0 / 100.0, 1.0/100.0);
+	float z = 0.0;
+	float dz = 180.0/nAxis;
+	for(int i=1;i<nAxis;i++)
+	{
+		z = dz*i;
+		glColor4f(0.9f, 0.0f, 0.0f, 1.0f);
+		glPushMatrix(); // GL_MODELVIEW is default
+		glTranslatef(0.0,z,0.0);
+		glRotatef(90.0,1.0,0.0,0.0);
+		glutSolidTorus(0.25, 60.0, 100, 100);
+		glPopMatrix();
+	}
 	glPopMatrix();
 }
 

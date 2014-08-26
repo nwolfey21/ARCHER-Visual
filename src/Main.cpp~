@@ -32,6 +32,7 @@ float drawSpatial(int N, int flag);
 void drawOBJs(meshOBJ *obj, float *colorTable, int colored);
 void drawParticles(particle *particles, int numParticles); 
 void drawOffice(meshOBJ *obj);
+void drawAxis(int nAxis);
 void animate(particle *particles, int *iter, int numParticles);
 
 /*************Internal Functions***************/
@@ -60,7 +61,6 @@ float scale = 1.0;
 int   show_spatial=0;
 float view_spatial_rotate[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
 float spatial_pos[] = { 0.0, 0.0, 0.0 };
-float obj_pos[] = { 0.0, 0.0, 0.0 };
 
 /** Pointers to the windows and some of the controls we'll create **/
 GLUI            *spatialSubWindow,*controlWindow,*spatialBottomSubWIndow;
@@ -84,6 +84,7 @@ GLUI            *spatialSubWindow,*controlWindow,*spatialBottomSubWIndow;
 #define DRAW_OBJS			 238
 #define DRAW_OFFICE			 241
 #define ANIMATE				 242
+#define DRAW_AXIS			 243
 #define REMOVE_PARTICLES     239
 #define XRAY_VIEW			 305
 #define MODEL_VIEW			 306
@@ -111,7 +112,9 @@ int loadedOffice = 0;
 int objFlag = 0;
 int particleFlag = 0;
 int officeFlag = 0;
+int axisFlag = 0;
 int animateFlag = 0;
+int nAxis = 20;
 int *animationIteration = (int*) calloc (numParticles+1,sizeof(int));
 float colorTable[303];
 
@@ -354,6 +357,13 @@ void control_cb( int control )
 		glutSetWindow(spatialWindow);
 		spatialDisplay();
 	}
+	else if(control == DRAW_AXIS)
+	{	
+		printf("Draw axis call back\n");
+		axisFlag = 1;
+		glutSetWindow(spatialWindow);
+		spatialDisplay();
+	}
 	else if(control == REMOVE_PARTICLES)
 	{	
 		printf("Remove Particles call back\n");
@@ -518,6 +528,10 @@ void spatialDisplay( void )
 	{
 		drawOffice(office);
 	}
+	if(axisFlag)
+	{
+		drawAxis(nAxis);
+	}
 	if(loadedParticles && animateFlag && animationIteration[numParticles]!=numParticles-1)
 	{
 		animate(particles, animationIteration, numParticles);
@@ -653,6 +667,9 @@ int main(int argc, char* argv[])
 	new GLUI_Button( controlWindow, "Draw Objects", DRAW_OBJS, control_cb );
 	new GLUI_Button( controlWindow, "Draw Particles", DRAW_PARTICLES, control_cb );
 	new GLUI_Button( controlWindow, "Draw Office", DRAW_OFFICE, control_cb );
+	new GLUI_Spinner( controlWindow, "axis:", GLUI_SPINNER_INT, &nAxis);
+
+	new GLUI_Button( controlWindow, "Draw Axis", DRAW_AXIS, control_cb );
 	new GLUI_Button( controlWindow, "Remove Particles", REMOVE_PARTICLES, control_cb );
 	new GLUI_Button( controlWindow, "Animate", ANIMATE, control_cb );
 	new GLUI_Checkbox( controlWindow, "Light 0",&light0_enabled,LIGHT0_ENABLED_ID,control_cb);
