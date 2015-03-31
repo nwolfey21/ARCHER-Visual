@@ -48,7 +48,8 @@ void drawOBJs(meshOBJ *obj, float *colorTable, int colored)
 	glPopMatrix();
 }
 
-void drawParticles(particle *particles, int numParticles)
+//void drawParticles(particle *particles, int numParticles)
+void drawParticles(particle *particles, particle *particles2, particle *particles3, particle *particles4, int numParticles)
 {
 	printf("drawing Particles\n");
 	glPushMatrix(); // GL_MODELVIEW is default
@@ -64,7 +65,35 @@ void drawParticles(particle *particles, int numParticles)
 			v = particles[i].getPosition(j);
 			glPushMatrix(); // GL_MODELVIEW is default
 			glTranslatef(v.getX(),v.getZ(),v.getY());
-			glutSolidSphere (0.5, 20, 16);
+//			glutSolidSphere (0.12, 4, 4);
+			glutSolidCube (0.12);
+			glPopMatrix();
+		}
+		for(unsigned int j=0;j<particles2[i].getSize();j++)
+		{
+			v = particles2[i].getPosition(j);
+			glPushMatrix(); // GL_MODELVIEW is default
+			glTranslatef(v.getX(),v.getZ(),v.getY());
+//			glutSolidSphere (0.12, 4, 4);
+			glutSolidCube (0.12);
+			glPopMatrix();
+		}
+		for(unsigned int j=0;j<particles3[i].getSize();j++)
+		{
+			v = particles3[i].getPosition(j);
+			glPushMatrix(); // GL_MODELVIEW is default
+			glTranslatef(v.getX(),v.getZ(),v.getY());
+//			glutSolidSphere (0.12, 4, 4);
+			glutSolidCube (0.12);
+			glPopMatrix();
+		}
+		for(unsigned int j=0;j<particles4[i].getSize();j++)
+		{
+			v = particles4[i].getPosition(j);
+			glPushMatrix(); // GL_MODELVIEW is default
+			glTranslatef(v.getX(),v.getZ(),v.getY());
+//			glutSolidSphere (0.12, 4, 4);
+			glutSolidCube (0.12);
 			glPopMatrix();
 		}
 	}
@@ -99,21 +128,25 @@ void drawOffice(meshOBJ *obj)
 	glPopMatrix();
 }
 
-void drawAxis(int nAxis)
+void drawAxis(int nAxis, float startPointZ)	//Prints nAxis many axis starting at point startPointZ
 {
 	printf("drawing Axis\n");
 	glPushMatrix(); // GL_MODELVIEW is default
 	glScalef(1.0 / 100.0, 1.0 / 100.0, 1.0/100.0);
 	float z = 0.0;
-	float dz = 180.0/nAxis;
-	for(int i=1;i<nAxis;i++)
+//	float dz = 180.0/nAxis;
+//	float dz = 180.0/90.0;
+	float dz = 40.0;
+	for(int i=0;i<nAxis;i++)
 	{
-		z = dz*i;
+//		z = dz*i + startPointZ;
+//		z = dz*66.0;
+		z = dz*i + 15.0*2.0;
 		glColor4f(0.9f, 0.0f, 0.0f, 1.0f);
 		glPushMatrix(); // GL_MODELVIEW is default
 		glTranslatef(0.0,z,0.0);
 		glRotatef(90.0,1.0,0.0,0.0);
-		glutSolidTorus(0.25, 60.0, 100, 100);
+		glutSolidTorus(0.75, 52.7, 100, 100);
 		glPopMatrix();
 	}
 	glPopMatrix();
@@ -122,30 +155,33 @@ void drawAxis(int nAxis)
 void animate(particle *particles, int *iter, int numParticles)
 {
 	printf("animating\n");
+//	drawAxis(1,startPointZ);
 	glPushMatrix(); // GL_MODELVIEW is default
 	glScalef(1.0 / 100.0, 1.0 / 100.0, 1.0/100.0);
 	vertex v;
-	for(int i=1;i<100;i++)
+
+	for(int i=1;i<numParticles;i++)
 	{
 		glColor4f(1.0f, 0.0f, 0.0f, 0.5f);
 		if(iter[i] != -1)
 		{
-			if((unsigned int)iter[i] < particles[i].getSize())
+			if((unsigned int)iter[i] < particles[i].getSize() && iter[i] < 100)		//Remove && iter[i] < 80 if want to do entire particle paths
 			{
-				for(int j=0;j<iter[i];j++)
+				for(int j=0;j<iter[i];j++)	//Plot all locations along path of particle i from j=0 to j=iter[i]
 				{
 					v = particles[i].getPosition(j);
 					glPushMatrix(); // GL_MODELVIEW is default
 					glTranslatef(v.getX(),v.getZ(),v.getY());
-					glutSolidSphere (0.5, 20, 16);
+//					glutSolidSphere (0.12, 5, 5);
+					glutSolidCube (0.2);
 					glPopMatrix();
 				}
-				iter[i]++;
+				iter[i]++;					//increase so the next run plots one more location along particle i's path
 			}
 			else
 			{
-				iter[i] = -1;
-				iter[numParticles]++;
+				iter[i] = -1;			//Lets us know that particle i's path has been plotted
+				iter[numParticles]++;	//Keep track of how many particles have been plotted
 			}
 		}
 	}

@@ -30,9 +30,10 @@ Currently: 04/19/2014
 // Updated
 float drawSpatial(int N, int flag);
 void drawOBJs(meshOBJ *obj, float *colorTable, int colored);
-void drawParticles(particle *particles, int numParticles); 
+//void drawParticles(particle *particles, int numParticles); 
+void drawParticles(particle *particles, particle *particles2, particle *particles3, particle *particles4, int numParticles);
 void drawOffice(meshOBJ *obj);
-void drawAxis(int nAxis);
+void drawAxis(int nAxis, float startPointZ);
 void animate(particle *particles, int *iter, int numParticles);
 
 /*************Internal Functions***************/
@@ -102,10 +103,13 @@ GLfloat light2_position[] = {-0.5f, -0.5f, 1.0f, 0.0f};
 GLfloat lights_rotation[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
 
 //-----Approved Variables-----//
-const int numParticles = 100;
+const int numParticles = 900;
 meshOBJ objs[138];
 meshOBJ office[1];
 particle particles[numParticles];
+particle particles2[numParticles];	//particles in 2nd scan rotation
+particle particles3[numParticles];	//particles in 3rd scan rotation
+particle particles4[numParticles];	//particles in 4th scan rotation
 int loadedOBJ = 0;					//0 objects have not been loaded, 1 objects have been loaded
 int loadedParticles = 0;
 int loadedOffice = 0;
@@ -114,7 +118,9 @@ int particleFlag = 0;
 int officeFlag = 0;
 int axisFlag = 0;
 int animateFlag = 0;
-int nAxis = 20;
+int nAxis = 4;
+int currentAxis = 10000;
+float startPointZ = 0.0;
 int *animationIteration = (int*) calloc (numParticles+1,sizeof(int));
 float colorTable[303];
 
@@ -321,10 +327,26 @@ void control_cb( int control )
 		char particleFilepath[200];
 		for(int i=1;i<numParticles;i++)
 		{
-			sprintf(particleFilepath,"data/particles/particle%dPosition.dat",i);
+//			sprintf(particleFilepath,"data/particles/particle%dposition.dat",i);
+//			std::cout << "loading file: " << particleFilepath << std::endl;
+//			particles[i].setPath(particleFilepath);
+//			particles[i].load();
+			sprintf(particleFilepath,"data/particles/scan15/particle%dposition.dat",i);
 			std::cout << "loading file: " << particleFilepath << std::endl;
 			particles[i].setPath(particleFilepath);
 			particles[i].load();
+			sprintf(particleFilepath,"data/particles/scan35/particle%dposition.dat",i);
+			std::cout << "loading file: " << particleFilepath << std::endl;
+			particles2[i].setPath(particleFilepath);
+			particles2[i].load();
+			sprintf(particleFilepath,"data/particles/scan55/particle%dposition.dat",i);
+			std::cout << "loading file: " << particleFilepath << std::endl;
+			particles3[i].setPath(particleFilepath);
+			particles3[i].load();
+			sprintf(particleFilepath,"data/particles/scan75/particle%dposition.dat",i);
+			std::cout << "loading file: " << particleFilepath << std::endl;
+			particles4[i].setPath(particleFilepath);
+			particles4[i].load();
 		}
 	}
 	else if(control == LOAD_OFFICE)
@@ -376,6 +398,8 @@ void control_cb( int control )
 		printf("Animate call back\n");
 		particleFlag = 0;						//Disable rendering of particles
 		animateFlag = 1;
+		currentAxis = 0;
+		startPointZ = currentAxis*180.0/nAxis;
 		animationIteration = (int*) calloc (numParticles+1,sizeof(int));
 		glutSetWindow(spatialWindow);			//Set Window for rendering
 		spatialDisplay();						//begin rendering process
@@ -429,6 +453,13 @@ void myGlutIdle( void )
 	if(animationIteration[numParticles] != numParticles-1)
 	{
 		animationSpatialDisplay();						//begin rendering process
+	}
+	else if(currentAxis < nAxis)
+	{
+		currentAxis++;
+		animationIteration = (int*) calloc (numParticles+1,sizeof(int));
+		startPointZ = currentAxis*180.0/nAxis;
+		spatialDisplay();						//begin rendering process
 	}
 	else
 	{
@@ -528,9 +559,13 @@ void spatialDisplay( void )
 	{
 		drawOffice(office);
 	}
-	if(axisFlag)
+	if(axisFlag && animateFlag)
 	{
-		drawAxis(nAxis);
+		drawAxis(1, 0);
+	}
+	if(axisFlag && animateFlag==0)
+	{
+		drawAxis(nAxis, 0);
 	}
 	if(loadedParticles && animateFlag && animationIteration[numParticles]!=numParticles-1)
 	{
@@ -538,7 +573,8 @@ void spatialDisplay( void )
 	}
 	if(loadedParticles && particleFlag)
 	{
-		drawParticles(particles, numParticles);
+//		drawParticles(particles, numParticles);
+		drawParticles(particles, particles2, particles3, particles4, numParticles);
 	}
 	glPopMatrix();	
 	glutSwapBuffers(); 
@@ -567,9 +603,28 @@ void animationSpatialDisplay( void )
 
 	glScalef( scale, scale, scale );
 	glPushMatrix();
+	if(axisFlag)
+	{
+//		drawAxis(1, startPointZ);
+	}
 	if(loadedParticles && animateFlag && animationIteration[numParticles]!=numParticles-1)
 	{
-		animate(particles, animationIteration, numParticles);
+		if(currentAxis == 0)
+		{
+			animate(particles, animationIteration, numParticles);
+		}
+		else if(currentAxis == 1)
+		{
+			animate(particles2, animationIteration, numParticles);
+		}
+		else if(currentAxis == 2)
+		{
+			animate(particles3, animationIteration, numParticles);
+		}
+		else if(currentAxis == 3)
+		{
+			animate(particles4, animationIteration, numParticles);
+		}
 		printf("animationIteration:%d\n",animationIteration[numParticles]);
 	}
 	glPopMatrix();	
