@@ -9,7 +9,7 @@ Discription:
 /* OpenGL Code Headers */
 #include <GL/glui.h>
 
-void drawOBJs(meshOBJ *obj, float *colorTable, int colored)
+void drawOBJs(meshOBJ *obj, float *colorTable, int colored, int dogFlag)
 {
 	printf("drawing Objects\n");
 	glPushMatrix(); // GL_MODELVIEW is default
@@ -44,6 +44,37 @@ void drawOBJs(meshOBJ *obj, float *colorTable, int colored)
 			}
 		}
 	}
+
+	//Print the dog
+	if(dogFlag)
+	{printf("printing dog\n");
+		int i=138;
+		if(obj[i].isValidated())
+		{
+			if(colored)
+			{
+				glColor4f(colorTable[i%100*3]/255,colorTable[i%100*3+1]/255,colorTable[i%100*3+2]/255,0.3f);	
+			}
+			else
+			{
+				glColor4f(0.0f, 0.0f, 1.0f, 0.2f);
+			}
+
+			for(unsigned int j=0;j<obj[i].getSize();j++)
+			{
+				normal = obj[i].getNormals(j);
+				vertex = obj[i].getVertices(j);
+				//Render 1 Face
+				glNormal3f(normal[0].getX(),normal[0].getY(),normal[0].getZ());
+				glVertex3f(vertex[0].getX()+70,vertex[0].getY(),vertex[0].getZ());
+				glNormal3f(normal[1].getX(),normal[1].getY(),normal[1].getZ());
+				glVertex3f(vertex[1].getX()+70,vertex[1].getY(),vertex[1].getZ());
+				glNormal3f(normal[2].getX(),normal[2].getY(),normal[2].getZ());
+				glVertex3f(vertex[2].getX()+70,vertex[2].getY(),vertex[2].getZ());
+			}
+		}
+	}
+
 	glEnd();
 	glPopMatrix();
 }

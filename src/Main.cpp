@@ -29,7 +29,7 @@ Currently: 04/19/2014
 /*************External Functions***************/
 // Updated
 float drawSpatial(int N, int flag);
-void drawOBJs(meshOBJ *obj, float *colorTable, int colored);
+void drawOBJs(meshOBJ *obj, float *colorTable, int colored, int dogFlag);
 //void drawParticles(particle *particles, int numParticles); 
 void drawParticles(particle *particles, particle *particles2, particle *particles3, particle *particles4, int numParticles);
 void drawOffice(meshOBJ *obj);
@@ -54,7 +54,7 @@ int   colored_view_enabled = 0;
 int   light0_enabled = 1;
 int   light1_enabled = 1;
 int   light2_enabled = 1;
-float light0_intensity = 0.4;
+float light0_intensity = 0.01;
 float light0_intensity2 = 1.4;
 float light1_intensity = .4;
 int   spatialWindow;
@@ -90,7 +90,8 @@ GLUI            *spatialSubWindow,*controlWindow,*spatialBottomSubWIndow;
 #define XRAY_VIEW			 305
 #define MODEL_VIEW			 306
 #define STD_VIEW			 307
-#define COLORED_VIEW		 308
+#define COLORED_VIEW		 309
+#define DOG_INCLUDED		 309
 
 /********** Miscellaneous global variables **********/
 GLfloat light0_ambient[] =  {0.1f, 0.1f, 0.3f, 1.0f};
@@ -104,7 +105,7 @@ GLfloat lights_rotation[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
 
 //-----Approved Variables-----//
 const int numParticles = 900;
-meshOBJ objs[138];
+meshOBJ objs[139];
 meshOBJ office[1];
 particle particles[numParticles];
 particle particles2[numParticles];	//particles in 2nd scan rotation
@@ -120,6 +121,7 @@ int axisFlag = 0;
 int animateFlag = 0;
 int nAxis = 4;
 int currentAxis = 10000;
+int dogFlag = 1;
 float startPointZ = 0.0;
 int *animationIteration = (int*) calloc (numParticles+1,sizeof(int));
 float colorTable[303];
@@ -317,6 +319,13 @@ void control_cb( int control )
 			std::cout << "loading file: " << filepath << std::endl;
 			objs[i].setPath(filepath);
 			objs[i].load();
+		}
+		if(dogFlag)
+		{
+			sprintf(filepath,"data/dog.obj");
+			std::cout << "loading file: " << filepath << std::endl;
+			objs[138].setPath(filepath);
+			objs[138].load();
 		}
 		loadColorTable();
 	}
@@ -553,7 +562,7 @@ void spatialDisplay( void )
 	glPushMatrix();
 	if(loadedOBJ && objFlag)
 	{
-		drawOBJs(objs,colorTable,colored_view_enabled);
+		drawOBJs(objs,colorTable,colored_view_enabled,dogFlag);
 	}
 	if(loadedOffice && officeFlag)
 	{
@@ -734,6 +743,7 @@ int main(int argc, char* argv[])
 	new GLUI_Checkbox( controlWindow, "XRAY View",&xray_view_enabled,XRAY_VIEW,control_cb);
 	new GLUI_Checkbox( controlWindow, "Model View",&model_view_enabled,MODEL_VIEW,control_cb);
 	new GLUI_Checkbox( controlWindow, "Colored Model",&colored_view_enabled,COLORED_VIEW,control_cb);
+	new GLUI_Checkbox( controlWindow, "Include Dog",&dogFlag,DOG_INCLUDED,control_cb);
 	new GLUI_Button( controlWindow, "Decrease Intensity 0", LIGHT0_INTENSITY_ID, control_cb );
 	new GLUI_Button( controlWindow, "Increase Intensity 0", LIGHT0_INTENSITY2_ID, control_cb );
 
