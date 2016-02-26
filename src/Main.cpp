@@ -29,7 +29,7 @@ Currently: 04/19/2014
 /*************External Functions***************/
 // Updated
 float drawSpatial(int N, int flag);
-void drawOBJs(meshOBJ *obj, float *colorTable, int colored, int dogFlag);
+void drawOBJs(meshOBJ *obj, float *colorTable, float *modelMassTable, float *modelVolumeTable, float *modelDensityTable, int colorMode, int colored, int dogFlag);
 //void drawParticles(particle *particles, int numParticles); 
 void drawParticles(particle *particles, particle *particles2, particle *particles3, particle *particles4, int numParticles);
 void drawOffice(meshOBJ *obj);
@@ -41,6 +41,7 @@ void spatialReshape( int x, int y );
 void spatialDisplay( void );
 void animationSpatialDisplay( void );
 void loadColorTable();
+void loadModelFeatures();
 
 float xy_aspect;
 int   last_x, last_y;
@@ -51,6 +52,14 @@ int   xray_view_enabled = 0;
 int   model_view_enabled = 0;
 int   std_view_enabled = 1;
 int   colored_view_enabled = 0;
+int   grey_enabled = 1;
+int   black_white_enabled = 0;
+int   bold_enabled = 0;
+int   pastel_enabled = 0;
+int   cool_enabled = 0;
+int   warm_enabled = 0;
+int   blind_enabled = 0;
+int   background_enabled = 0;
 int   light0_enabled = 1;
 int   light1_enabled = 1;
 int   light2_enabled = 1;
@@ -91,7 +100,15 @@ GLUI            *spatialSubWindow,*controlWindow,*spatialBottomSubWIndow;
 #define MODEL_VIEW			 306
 #define STD_VIEW			 307
 #define COLORED_VIEW		 309
-#define DOG_INCLUDED		 309
+#define DOG_INCLUDED		 310
+#define GREYSCALE			 311
+#define BLACKWHITE			 312
+#define COOL			 	 313
+#define WARM				 314
+#define BOLD			 	 315
+#define PASTEL				 316
+#define COLORBLIND			 317
+#define BACKGROUND			 318
 
 /********** Miscellaneous global variables **********/
 GLfloat light0_ambient[] =  {0.1f, 0.1f, 0.3f, 1.0f};
@@ -122,9 +139,14 @@ int animateFlag = 0;
 int nAxis = 4;
 int currentAxis = 10000;
 int dogFlag = 1;
+int colorMode = 0;
 float startPointZ = 0.0;
 int *animationIteration = (int*) calloc (numParticles+1,sizeof(int));
 float colorTable[303];
+float modelNameTable[138];
+float modelMassTable[138];
+float modelVolumeTable[138];
+float modelDensityTable[138];
 
 /***********************************************************************/
 /*                          control_cb()                               */
@@ -196,6 +218,120 @@ void control_cb( int control )
 	}
 	if( control == COLORED_VIEW )
 	{
+		grey_enabled = 0;
+		black_white_enabled = 0;
+		bold_enabled = 0;
+		pastel_enabled = 0;
+		cool_enabled = 0;
+		warm_enabled = 0;
+		blind_enabled = 0;
+		colorMode = 8;
+		controlWindow->sync_live();
+		glutSetWindow(spatialWindow);
+		spatialDisplay();
+	}
+	if( control == GREYSCALE )
+	{
+		colored_view_enabled = 0;
+		grey_enabled = 1;
+		black_white_enabled = 0;
+		bold_enabled = 0;
+		pastel_enabled = 0;
+		cool_enabled = 0;
+		warm_enabled = 0;
+		blind_enabled = 0;
+		colorMode = 1;
+		controlWindow->sync_live();
+		glutSetWindow(spatialWindow);
+		spatialDisplay();
+	}
+	if( control == BLACKWHITE )
+	{
+		colored_view_enabled = 0;
+		grey_enabled = 0;
+		black_white_enabled = 1;
+		bold_enabled = 0;
+		pastel_enabled = 0;
+		cool_enabled = 0;
+		warm_enabled = 0;
+		blind_enabled = 0;
+		colorMode = 2;
+		controlWindow->sync_live();
+		glutSetWindow(spatialWindow);
+		spatialDisplay();
+	}
+	if( control == BOLD )
+	{
+		colored_view_enabled = 0;
+		grey_enabled = 0;
+		black_white_enabled = 0;
+		bold_enabled = 1;
+		pastel_enabled = 0;
+		cool_enabled = 0;
+		warm_enabled = 0;
+		blind_enabled = 0;
+		colorMode = 3;
+		controlWindow->sync_live();
+		glutSetWindow(spatialWindow);
+		spatialDisplay();
+	}
+	if( control == PASTEL )
+	{
+		colored_view_enabled = 0;
+		grey_enabled = 0;
+		black_white_enabled = 0;
+		bold_enabled = 0;
+		pastel_enabled = 1;
+		cool_enabled = 0;
+		warm_enabled = 0;
+		blind_enabled = 0;
+		colorMode = 4;
+		controlWindow->sync_live();
+		glutSetWindow(spatialWindow);
+		spatialDisplay();
+	}
+	if( control == COOL )
+	{
+		colored_view_enabled = 0;
+		grey_enabled = 0;
+		black_white_enabled = 0;
+		bold_enabled = 0;
+		pastel_enabled = 0;
+		cool_enabled = 1;
+		warm_enabled = 0;
+		blind_enabled = 0;
+		colorMode = 5;
+		controlWindow->sync_live();
+		glutSetWindow(spatialWindow);
+		spatialDisplay();
+	}
+	if( control == WARM )
+	{
+		colored_view_enabled = 0;
+		grey_enabled = 0;
+		black_white_enabled = 0;
+		bold_enabled = 0;
+		pastel_enabled = 0;
+		cool_enabled = 0;
+		warm_enabled = 1;
+		blind_enabled = 0;
+		colorMode = 6;
+		controlWindow->sync_live();
+		glutSetWindow(spatialWindow);
+		spatialDisplay();
+	}
+	if( control == COLORBLIND )
+	{
+		colored_view_enabled = 0;
+		grey_enabled = 0;
+		black_white_enabled = 0;
+		bold_enabled = 0;
+		pastel_enabled = 0;
+		cool_enabled = 0;
+		warm_enabled = 0;
+		blind_enabled = 1;
+		colorMode = 7;
+		controlWindow->sync_live();
 		glutSetWindow(spatialWindow);
 		spatialDisplay();
 	}
@@ -327,6 +463,7 @@ void control_cb( int control )
 			objs[138].setPath(filepath);
 			objs[138].load();
 		}
+		loadModelFeatures();
 		loadColorTable();
 	}
 	else if(control == LOAD_PARTICLES)
@@ -415,6 +552,26 @@ void control_cb( int control )
 	}
 }
 
+void loadModelFeatures()
+{
+	std::ifstream infile;
+	infile.open("data/73_adult_male/073kg/model-features.txt", std::ios::in);
+	if (infile.is_open()) 
+	{
+		int junk = 11;
+		for(int i=0;i<138;i++)
+		{
+			infile >> junk >> modelMassTable[i] >> modelVolumeTable[i] >> modelDensityTable[i];
+			printf("junk:%d modelMassTable[%d]:%f modelVolumeTable[%d]:%f modelDensityTable[%d]:%f\n",junk, i, modelMassTable[i], i, modelVolumeTable[i], i, modelDensityTable[i]);
+		}
+	}
+	else 
+	{
+		std::cout << "Error opening model-features.csv file";
+	}
+	infile.close();
+}
+
 void loadColorTable()
 {
 	std::ifstream infile;
@@ -424,6 +581,7 @@ void loadColorTable()
 		infile >> colorTable[i*3] >> colorTable[i*3+1] >> colorTable[i*3+2];
 		printf("colortable[%d]:%f colortable[%d]:%f colortable[%d]:%f\n",i*3, colorTable[i*3], i*3+1, colorTable[i*3+1], i*3+2, colorTable[i*3+2]);
 	}
+	infile.close();
 }
 
 /***********************************************************************/
@@ -562,7 +720,7 @@ void spatialDisplay( void )
 	glPushMatrix();
 	if(loadedOBJ && objFlag)
 	{
-		drawOBJs(objs,colorTable,colored_view_enabled,dogFlag);
+		drawOBJs(objs,colorTable,modelMassTable,modelVolumeTable,modelDensityTable,colorMode,colored_view_enabled,dogFlag);
 	}
 	if(loadedOffice && officeFlag)
 	{
@@ -743,6 +901,14 @@ int main(int argc, char* argv[])
 	new GLUI_Checkbox( controlWindow, "XRAY View",&xray_view_enabled,XRAY_VIEW,control_cb);
 	new GLUI_Checkbox( controlWindow, "Model View",&model_view_enabled,MODEL_VIEW,control_cb);
 	new GLUI_Checkbox( controlWindow, "Colored Model",&colored_view_enabled,COLORED_VIEW,control_cb);
+	new GLUI_Checkbox( controlWindow, "Greyscale",&grey_enabled,GREYSCALE,control_cb);
+	new GLUI_Checkbox( controlWindow, "Black White",&black_white_enabled,BLACKWHITE,control_cb);
+	new GLUI_Checkbox( controlWindow, "Cool",&cool_enabled,COOL,control_cb);
+	new GLUI_Checkbox( controlWindow, "Warm",&warm_enabled,WARM,control_cb);
+	new GLUI_Checkbox( controlWindow, "Bold",&bold_enabled,BOLD,control_cb);
+	new GLUI_Checkbox( controlWindow, "Pastel",&pastel_enabled,PASTEL,control_cb);
+	new GLUI_Checkbox( controlWindow, "Color Blind",&blind_enabled,COLORBLIND,control_cb);
+	new GLUI_Checkbox( controlWindow, "Light Background",&background_enabled,BACKGROUND,control_cb);
 	new GLUI_Checkbox( controlWindow, "Include Dog",&dogFlag,DOG_INCLUDED,control_cb);
 	new GLUI_Button( controlWindow, "Decrease Intensity 0", LIGHT0_INTENSITY_ID, control_cb );
 	new GLUI_Button( controlWindow, "Increase Intensity 0", LIGHT0_INTENSITY2_ID, control_cb );

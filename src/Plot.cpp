@@ -9,8 +9,25 @@ Discription:
 /* OpenGL Code Headers */
 #include <GL/glui.h>
 
-void drawOBJs(meshOBJ *obj, float *colorTable, int colored, int dogFlag)
+#include <cmath>
+
+//      Mass		Volume		Density		
+//min	0.2			0.18		0.25
+//max	15006.82	14292.21	2.75
+
+//GREYSCALE 1
+//BLACKWHITE 2
+//COOL 5
+//WARM 6
+//BOLD 3
+//PASTEL 4
+//COLORBLIND 7
+
+void drawOBJs(meshOBJ *obj, float *colorTable, float *modelMassTable, float *modelVolumeTable, float *modelDensityTable, int colorMode, int colored, int dogFlag)
 {
+	float maxMass = 15006.82;
+	float maxVolume = 14292.21;
+	float maxDensity = 2.75;
 	printf("drawing Objects\n");
 	glPushMatrix(); // GL_MODELVIEW is default
 	glScalef(1.0 / 100.0, 1.0 / 100.0, 1.0/100.0);
@@ -21,7 +38,105 @@ void drawOBJs(meshOBJ *obj, float *colorTable, int colored, int dogFlag)
 	{
 		if(obj[i].isValidated())
 		{
-			if(colored)
+			int color;
+			if(colorMode == 1)
+			{
+				color = floor(255.0*((int)modelMassTable[i]%425)/425);
+printf("color:%d\n",color);
+				glColor4f(color/255,color/255,color/255,0.3f);
+			}
+			else if(colorMode == 2)
+			{
+				if(modelMassTable[i] <= 425)
+				{
+					color = 1.0;
+				}
+				else 
+				{
+					color = 0.0;
+				}
+printf("color:%d\n",color);
+//				glColor4f(colorTable[i%100*3]/255,colorTable[i%100*3+1]/255,colorTable[i%100*3+2]/255,0.3f);	
+				glColor4f(color,color,color,0.3f);
+			}
+			else if(colorMode == 3)
+			{
+				if(modelMassTable[i] <= 350)
+					glColor4f(18.0/255,18.0/255,18.0/255,0.3f);
+				if(modelMassTable[i] > 350 && modelMassTable[i] <= 400)
+					glColor4f(0.0/255,64.0/255,224.0/255,0.3f);
+				if(modelMassTable[i] > 400 && modelMassTable[i] <= 450)
+					glColor4f(64.0/255,227.0/255,0.0/255,0.3f);
+				if(modelMassTable[i] > 450 && modelMassTable[i] <= 600)
+					glColor4f(219.0/255,33.0/255,2.0/255,0.3f);
+				if(modelMassTable[i] > 600)
+					glColor4f(255.0/255,115.0/255,0.0/255,0.3f);
+			}
+			else if(colorMode == 4)
+			{
+				if(modelMassTable[i] <= 350)
+					glColor4f(196.0/255,242.0/255,200.0/255,0.3f);
+				if(modelMassTable[i] > 350 && modelMassTable[i] <= 400)
+					glColor4f(242.0/255,216.0/255,203.0/255,0.3f);
+				if(modelMassTable[i] > 400 && modelMassTable[i] <= 450)
+					glColor4f(197.0/255,226.0/255,227.0/255,0.3f);
+				if(modelMassTable[i] > 450 && modelMassTable[i] <= 600)
+					glColor4f(252.0/255,255.0/255,117.0/255,0.3f);
+				if(modelMassTable[i] > 600)
+					glColor4f(255.0/255,204.0/255,204.0/255,0.3f);
+			}
+			else if(colorMode == 5)
+			{
+				if(modelMassTable[i] <= 200)
+					glColor4f(241.0/255,238.0/255,246.0/255,0.3f);
+				if(modelMassTable[i] > 200 && modelMassTable[i] <= 350)
+					glColor4f(208.0/255,209.0/255,230.0/255,0.3f);
+				if(modelMassTable[i] > 350 && modelMassTable[i] <= 400)
+					glColor4f(166.0/255,189.0/255,219.0/255,0.3f);
+				if(modelMassTable[i] > 400 && modelMassTable[i] <= 450)
+					glColor4f(116.0/255,169.0/255,207.0/255,0.3f);
+				if(modelMassTable[i] > 450 && modelMassTable[i] <= 600)
+					glColor4f(54.0/255,144.0/255,192.0/255,0.3f);
+				if(modelMassTable[i] > 600 && modelMassTable[i] <= 1000)
+					glColor4f(5.0/255,112.0/255,176.0/255,0.3f);
+				if(modelMassTable[i] > 1000)
+					glColor4f(3.0/255,78.0/255,123.0/255,0.3f);
+			}
+			else if(colorMode == 6)
+			{
+				if(modelMassTable[i] <= 200)
+					glColor4f(255.0/255,255.0/255,178.0/255,0.3f);
+				if(modelMassTable[i] > 200 && modelMassTable[i] <= 350)
+					glColor4f(254.0/255,217.0/255,118.0/255,0.3f);
+				if(modelMassTable[i] > 350 && modelMassTable[i] <= 400)
+					glColor4f(254.0/255,178.0/255,76.0/255,0.3f);
+				if(modelMassTable[i] > 400 && modelMassTable[i] <= 450)
+					glColor4f(253.0/255,141.0/255,60.0/255,0.3f);
+				if(modelMassTable[i] > 450 && modelMassTable[i] <= 600)
+					glColor4f(252.0/255,78.0/255,42.0/255,0.3f);
+				if(modelMassTable[i] > 600 && modelMassTable[i] <= 1000)
+					glColor4f(227.0/255,26.0/255,28.0/255,0.3f);
+				if(modelMassTable[i] > 1000)
+					glColor4f(177.0/255,0.0/255,38.0/255,0.3f);
+			}
+			else if(colorMode == 7)
+			{
+				if(modelMassTable[i] <= 200)
+					glColor4f(178.0/255,24.0/255,43.0/255,0.3f);
+				if(modelMassTable[i] > 200 && modelMassTable[i] <= 350)
+					glColor4f(239.0/255,138.0/255,98.0/255,0.3f);
+				if(modelMassTable[i] > 350 && modelMassTable[i] <= 400)
+					glColor4f(253.0/255,219.0/255,199.0/255,0.3f);
+				if(modelMassTable[i] > 400 && modelMassTable[i] <= 450)
+					glColor4f(247.0/255,247.0/255,247.0/255,0.3f);
+				if(modelMassTable[i] > 450 && modelMassTable[i] <= 600)
+					glColor4f(209.0/255,229.0/255,240.0/255,0.3f);
+				if(modelMassTable[i] > 600 && modelMassTable[i] <= 1000)
+					glColor4f(103.0/255,169.0/255,207.0/255,0.3f);
+				if(modelMassTable[i] > 1000)
+					glColor4f(33.0/255,102.0/255,172.0/255,0.3f);
+			}
+			else if(colorMode == 8)
 			{
 				glColor4f(colorTable[i%100*3]/255,colorTable[i%100*3+1]/255,colorTable[i%100*3+2]/255,0.3f);	
 			}
@@ -30,7 +145,7 @@ void drawOBJs(meshOBJ *obj, float *colorTable, int colored, int dogFlag)
 				glColor4f(0.0f, 0.0f, 1.0f, 0.2f);
 			}
 
-			for(unsigned int j=0;j<obj[i].getSize();j++)
+			for(unsigned int j=0;j<obj[i].getSize();j++)			
 			{
 				normal = obj[i].getNormals(j);
 				vertex = obj[i].getVertices(j);
